@@ -21,20 +21,20 @@ class Run(object):
     """
     # TODO: consider using setters and getters instead of accessing objects directly
 
-    def __init__(self, bins=None, edges=None, name=None):
+    def __init__(self, bins=None, edges=None, name=None, nsetups=1):
         self.initialised = False
         self.meta = {}
         self._isdifferential = False
         if (bins):
             self.bins = bins
             self.edges = Run.convert_to_edges(self.bins)
-            self.values = np.zeros((len(bins),1))
-            self.errors = np.zeros((len(bins),1))
+            self.values = np.zeros((len(bins),nsetups))
+            self.errors = np.zeros((len(bins),nsetups))
         elif (edges):
             self.edges = edges
             self.bins = Run.convert_to_bins(self.edges)
-            self.values = np.zeros((len(bins),1))
-            self.errors = np.zeros((len(bins),1))
+            self.values = np.zeros((len(bins),nsetups))
+            self.errors = np.zeros((len(bins),nsetups))
         if (name):
             self.meta['name'] = name
         pass
@@ -110,11 +110,12 @@ class Run(object):
         self.make_differential()
         self.dim = len(self.edges)
 
+        if 'xsec' in request:
+            self.xsec = np.array(request.get('xsec'))
+
         # other
         self.name = request.get('name')
         self.variable = request.get('variable')
-
-        # TODO: add xsection info loading
 
 
     def is_differential(self):
@@ -142,6 +143,9 @@ class Run(object):
 
 
     def rescale(self,denom,correlated=None):
+        """Function to get a ratio over run,
+        or normalise by any array or constant (e.g cross section)
+        """
         if (isinstance(denom,Run)):
             if (correlated):
                 self.values /= denom.values
@@ -162,19 +166,8 @@ class Run(object):
             self.values /= denom
             self.errors /= denom
         else:
-            raise Exception("Underfined rescale input")
+            raise Exception("Unexpected denominator type")
         return self
-
-
-    # def make_normalised(self,to_xsec=False):
-    #     try:
-    #         if (self._isnormalised):
-    #             raise Exception("Already made normalised")
-    #     norm = self.xsec_values[0] if to_xsec else np.sum(self.values[:,0])
-    #     self.values /= norm
-    #     self.errors /= norm
-    #     self._normalised = True
-    #     return self
 
 
     # TODO: generalise
@@ -224,10 +217,23 @@ class Run(object):
                 run.meta[attr] = deepcopy(self.meta[attr])
         return run
 
-
     def copy(self):
-        return deepcopy(self)
+        """Copy only data"""
+        run = Run()
+        run.bins = deepcopy(self.bins)
+        run.edges = Run.convert_to_edges(run.bins)
+        run.values = deepcopy(self.values)
+        run.errors = deepcopy(self.errors)
+        if hasattr(self,'xsec'):
+            run.xsec = deepcopy(self.xsec)
+        # for a in 'xsec_values xsec_errors'.split():
+        #     if hasattr(self,a):
+        #         setattr(run,a,deepcopy(getattr(self,a)))
+        return run
 
+    def deepcopy(self):
+        """Deepcopy the whole run data"""
+        return deepcopy(self)
 
     def flatten(self):
         """Remove dimensions represented by one bin"""
@@ -288,4 +294,4 @@ class Run(object):
 
     # TODO: nice printout
     def __repr__(self):
-        return self.bins
+        return self.name
