@@ -51,8 +51,8 @@ def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
 
     run.values = v[:,setupids]
     run.errors = e[:,setupids]
-    run.xsecval = mt.extractXSections(fileid)[setupids,0,0]
-    run.xsecerr = mt.extractXSections(fileid)[setupids,1,0]
+    run.xsec_values = mt.extractXSections(fileid)[setupids,0,0]
+    run.xsec_errors = mt.extractXSections(fileid)[setupids,1,0]
 
     run.dim = dim
     meta['obs'] = obs
@@ -60,6 +60,7 @@ def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
     meta['smearing'] = mt.histogramSmearing(hist)
     meta['nevents'] = int(mt.files[fileid][1].find('nevents').text)
     run.meta.update(meta)
+    run.name = file
 
     run.make_differential()
 

@@ -1,5 +1,6 @@
 import pathlib
 import json
+import re
 import numpy as np
 from functools import wraps
 from copy import copy, deepcopy
@@ -20,7 +21,7 @@ class Run(object):
     """
     # TODO: consider using setters and getters instead of accessing objects directly
 
-    def __init__(self, bins=None):
+    def __init__(self, bins=None, edges=None, name=None):
         self.initialised = False
         self.meta = {}
         self._isdifferential = False
@@ -29,7 +30,24 @@ class Run(object):
             self.edges = Run.convert_to_edges(self.bins)
             self.values = np.zeros((len(bins),1))
             self.errors = np.zeros((len(bins),1))
+        elif (edges):
+            self.edges = edges
+            self.bins = Run.convert_to_bins(self.edges)
+            self.values = np.zeros((len(bins),1))
+            self.errors = np.zeros((len(bins),1))
+        if (name):
+            self.meta['name'] = name
         pass
+
+    @property
+    def name(self):
+        return self.meta.get('name')
+
+    @name.setter
+    def name(self, value, latex=False):
+        if (latex):
+            value = re.sub('_', '\\_', value)
+        self.meta['name'] = value
 
     def v(self):
         """Get values at central scale"""
@@ -92,6 +110,10 @@ class Run(object):
         self.make_differential()
         self.dim = len(self.edges)
 
+        # other
+        self.name = request.get('name')
+        self.variable = request.get('variable')
+
         # TODO: add xsection info loading
 
 
@@ -116,6 +138,39 @@ class Run(object):
             self.errors[i] = e/areas[i]
 
         self._isdifferential = True
+        return self
+
+
+    def rescale(self,values,correlated=None):
+        if (isinstance(values,np.ndarray)):
+            if (correlated):
+                # assert(values.shape == self.values.shape,
+                #     "Rescaling undefined for runs with non-matching dimensions")
+                self.values /= self.run
+                self.errors /= self.errors
+            else:
+                # assert(values.shape[0] == self.values.shape[0], \
+                #        "Rescaling undefined for runs with non-matching dimensions")
+                self.values /= values[:,0]
+                self.errors /= self.errors[:,0]
+
+        elif (isinstance(values,float)):
+            self.values /= values
+            self.errors /= values
+        else:
+            raise Exception("Underfined rescale input")
+        return self
+
+
+    # def make_normalised(self,to_xsec=False):
+    #     try:
+    #         if (self._isnormalised):
+    #             raise Exception("Already made normalised")
+    #     norm = self.xsec_values[0] if to_xsec else np.sum(self.values[:,0])
+    #     self.values /= norm
+    #     self.errors /= norm
+    #     self._normalised = True
+    #     return self
 
 
     # TODO: generalise
