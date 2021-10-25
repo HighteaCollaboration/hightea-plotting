@@ -6,7 +6,10 @@ from copy import deepcopy
 def test_RunClass_create():
     run = Run()
 
-# test various loading methods
+#####################
+#  loading methods  #
+#####################
+
 def test_loading_dict():
     run = Run()
     run.load({'mean': [[[[0,1]],[1.0]], [[[1,2]],[2.0]], [[[2,3]],[3.0]]],
@@ -19,7 +22,10 @@ def test_loading_json():
     assert(run.bins[0] == [[0,1]])
     assert(run.is_differential())
 
-# test conversion from bins to edges
+##############################
+#  bin to edges conversions  #
+##############################
+
 def test_convert_to_edges_1d():
     bins = [[[0,1]],[[1,2]],[[2,3]]]
     result = Run.convert_to_edges(bins)
@@ -40,7 +46,6 @@ def test_convert_to_edges_2d():
     for b,e in zip(result, expected):
         assert((b == e).all())
 
-# test conversion from edges to bins
 def test_convert_to_bins_1d():
     edges = [np.array([0,1,2,3])]
     result = Run.convert_to_bins(edges)
@@ -53,7 +58,10 @@ def test_convert_to_bins_2d():
     expected = [[[0,1],[1,2]], [[1,3],[1,2]]]
     assert(np.array_equal(result, expected))
 
-# test obtaining subarea of the run binnings
+#####################
+#  slicing methods  #
+#####################
+
 def test_slicing_1d():
     run = Run()
     run.load({'mean': [[[[0,1]],[1.0]], [[[1,2]],[2.0]], [[[2,3]],[3.0]]],
@@ -80,7 +88,11 @@ def test_random():
     assert(run.values.shape == (len(run.bins),3))
     assert(run.errors.shape == (len(run.bins),3))
 
-def test_rescaling_1d():
+#########################
+#  ratio and rescaling  #
+#########################
+
+def test_rescaling():
     run = Run.random((2,3),3)
     divrun = run[:]
     divrun.rescale(run.values,correlated=True)
