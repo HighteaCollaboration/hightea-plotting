@@ -51,8 +51,7 @@ def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
 
     run.values = v[:,setupids]
     run.errors = e[:,setupids]
-    run.xsec_values = mt.extractXSections(fileid)[setupids,0,0]
-    run.xsec_errors = mt.extractXSections(fileid)[setupids,1,0]
+    run.xsec = np.transpose(mt.extractXSections(fileid)[setupids,:,0])
 
     run.dim = dim
     meta['obs'] = obs
