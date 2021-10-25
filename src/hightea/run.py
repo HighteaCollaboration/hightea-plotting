@@ -141,22 +141,26 @@ class Run(object):
         return self
 
 
-    def rescale(self,values,correlated=None):
-        if (isinstance(values,np.ndarray)):
+    def rescale(self,denom,correlated=None):
+        if (isinstance(denom,Run)):
             if (correlated):
-                # assert(values.shape == self.values.shape,
-                #     "Rescaling undefined for runs with non-matching dimensions")
-                self.values /= self.run
-                self.errors /= self.errors
+                self.values /= denom.values
+                self.values /= denom.errors
             else:
-                # assert(values.shape[0] == self.values.shape[0], \
-                #        "Rescaling undefined for runs with non-matching dimensions")
-                self.values /= values[:,0]
-                self.errors /= self.errors[:,0]
+                self.values /= denom.v()
+                self.values /= denom.e()
 
-        elif (isinstance(values,float)):
-            self.values /= values
-            self.errors /= values
+        if (isinstance(denom,np.ndarray)):
+            if (correlated):
+                self.values /= denom
+                self.errors /= denom
+            else:
+                self.values /= denom[:,0]
+                self.errors /= denom[:,0]
+
+        elif (isinstance(denom,float)):
+            self.values /= denom
+            self.errors /= denom
         else:
             raise Exception("Underfined rescale input")
         return self
@@ -221,6 +225,10 @@ class Run(object):
         return run
 
 
+    def copy(self):
+        return deepcopy(self)
+
+
     def flatten(self):
         """Remove dimensions represented by one bin"""
         self.edges = [x for x in self.edges if (len(x) > 2)]
@@ -260,6 +268,17 @@ class Run(object):
                 for newbin in Run.convert_to_bins([edges]):
                     binsList.append(bins + newbin)
             return binsList
+
+
+    @staticmethod
+    def random(dims, scales=1):
+        """Get random multi-dimensional run for testing purposes"""
+        run = Run()
+        run.edges = [np.array(range(d+1)) for d in dims if d > 0]
+        run.bins = Run.convert_to_bins(run.edges)
+        run.values = np.random.rand(len(run.bins),scales)
+        run.errors = np.random.rand(len(run.bins),scales) / 10
+        return run
 
 
     # TODO:

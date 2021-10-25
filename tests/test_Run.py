@@ -72,3 +72,20 @@ def test_slicing_2d():
     newrun.flatten()
     assert(len(newrun.edges) == 1)
 
+def test_random():
+    run = Run.random((2,3,1),3)
+    expected = [np.array([0,1,2]), np.array([0,1,2,3]), np.array([0,1])]
+    for r,e in zip(run.edges, expected):
+        assert((r == e).all())
+    assert(run.values.shape == (len(run.bins),3))
+    assert(run.errors.shape == (len(run.bins),3))
+
+def test_rescaling_1d():
+    run = Run.random((2,3),3)
+    divrun = run[:]
+    divrun.rescale(run.values,correlated=True)
+    assert(np.isclose(divrun.values.flatten(),np.ones(2*3*3)).all())
+
+
+
+
