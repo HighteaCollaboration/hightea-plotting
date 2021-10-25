@@ -65,6 +65,10 @@ class Run(object):
         """Get lower values for scale variation"""
         return np.amin(self.values, axis=1)
 
+    def dim(self):
+        """Get dimension of the run"""
+        return len(self.edges)
+
     def update_meta(**info):
         """Update run meta information"""
         self.meta.update(info)
@@ -108,7 +112,6 @@ class Run(object):
         self.errors = np.array(self.errors)
         self.edges = self.convert_to_edges(self.bins)
         self.make_differential()
-        self.dim = len(self.edges)
 
         if 'xsec' in request:
             self.xsec = np.array(request.get('xsec'))
@@ -199,7 +202,6 @@ class Run(object):
         newrun.errors = deepcopy(self.errors[binpos])
         newrun.edges = [deepcopy(self.edges[1])]
         newrun.bins = self.convert_to_bins(newrun.edges)
-        newrun.dim = 1
         newrun.meta = deepcopy(self.meta)
         newrun.meta['obs'] += f' [{line}]'
         return newrun

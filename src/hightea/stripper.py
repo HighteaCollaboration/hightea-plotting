@@ -47,13 +47,11 @@ def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
     v = v.reshape((len(run.bins),nsetups))
     e = mt.histogramErrors(hist, withOUF=withOUF).reshape((len(run.bins),nsetups))
     p = mt.histogramHits(hist, withOUF=withOUF).reshape((len(run.bins)))
-    dim = len(edgesList)
 
     run.values = v[:,setupids]
     run.errors = e[:,setupids]
     run.xsec = np.transpose(mt.extractXSections(fileid)[setupids,:,0])
 
-    run.dim = dim
     meta['obs'] = obs
     meta['histid'] = histid
     meta['smearing'] = mt.histogramSmearing(hist)
