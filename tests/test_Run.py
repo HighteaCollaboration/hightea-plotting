@@ -92,11 +92,11 @@ def test_random():
 #  ratio and rescaling  #
 #########################
 
-def test_rescaling():
+def test_div():
     run = Run.random((2,3),3)
     divrun = run[:]
-    divrun.rescale(run.values,correlated=True)
-    assert(np.isclose(divrun.values.flatten(),np.ones(2*3*3)).all())
+    newrun = divrun / run
+    assert(np.isclose(newrun.values.flatten(),np.ones(2*3*3)).all())
 
 
 

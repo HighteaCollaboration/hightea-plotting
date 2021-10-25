@@ -142,32 +142,49 @@ class Run(object):
         return self
 
 
-    def rescale(self,denom,correlated=None):
-        """Function to get a ratio over run,
-        or normalise by any array or constant (e.g cross section)
-        """
-        if (isinstance(denom,Run)):
-            if (correlated):
-                self.values /= denom.values
-                self.values /= denom.errors
-            else:
-                self.values /= denom.v()
-                self.values /= denom.e()
+    def __mul__(self,other):
+        """Multiplication method"""
+        res = self.mincopy()
+        if (isinstance(other,Run)):
+            assert(res.values.shape[0] == other.values.shape[0])
+            if (other.values.shape[1] == 1):
+                s = np.newaxis
+            elif (res.values.shape[1] == other.values.shape[1]):
+                s = slice(None)
 
-        if (isinstance(denom,np.ndarray)):
-            if (correlated):
-                self.values /= denom
-                self.errors /= denom
-            else:
-                self.values /= denom[:,0]
-                self.errors /= denom[:,0]
+            res.values *= other.values[:,s]
+            res.errors = res.errors*other.values[:,s] + \
+                         res.values*other.errors[:,s]
 
         elif (isinstance(denom,float)):
-            self.values /= denom
-            self.errors /= denom
+            res.values *= other
+            res.errors *= other
         else:
-            raise Exception("Unexpected denominator type")
-        return self
+            raise Exception("Mul operation failed")
+        return res
+
+
+    # TODO: test division examples
+    def __truediv__(self,other):
+        """Run division method. Supports division by a constant."""
+        res = self.mincopy()
+        if (isinstance(other,Run)):
+            assert(res.values.shape[0] == other.values.shape[0])
+            if (other.values.shape[1] == 1):
+                s = np.newaxis
+            elif (res.values.shape[1] == other.values.shape[1]):
+                s = slice(None)
+
+            res.values /= other.values[:,s]
+            res.errors = res.errors/other.values[:,s] + \
+                  res.values*other.errors[:,s]/other.values[:,s]**2
+
+        elif (isinstance(denom,float)):
+            res.values /= other
+            res.errors /= other
+        else:
+            raise Exception("Div operation failed")
+        return res
 
 
     # TODO: generalise
@@ -217,8 +234,8 @@ class Run(object):
                 run.meta[attr] = deepcopy(self.meta[attr])
         return run
 
-    def copy(self):
-        """Copy only data"""
+    def mincopy(self):
+        """Minimal copy: only data"""
         run = Run()
         run.bins = deepcopy(self.bins)
         run.edges = Run.convert_to_edges(run.bins)
@@ -226,9 +243,6 @@ class Run(object):
         run.errors = deepcopy(self.errors)
         if hasattr(self,'xsec'):
             run.xsec = deepcopy(self.xsec)
-        # for a in 'xsec_values xsec_errors'.split():
-        #     if hasattr(self,a):
-        #         setattr(run,a,deepcopy(getattr(self,a)))
         return run
 
     def deepcopy(self):
