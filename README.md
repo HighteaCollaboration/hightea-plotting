@@ -1,3 +1,3 @@
 # hightea-plotting
 
-Plotting routines
+Plotting routines for hightea library.
