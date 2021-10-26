@@ -14,7 +14,7 @@ def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
     else:
         fileid = file
         file = mt.files[fileid][0]
-    meta['filename'] = file
+    meta['file'] = file
 
     # Get observable
     obs = kwargs.get('obs',0)
@@ -56,7 +56,7 @@ def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
     meta['histid'] = histid
     meta['smearing'] = mt.histogramSmearing(hist)
     meta['nevents'] = int(mt.files[fileid][1].find('nevents').text)
-    run.meta.update(meta)
+    run.update_meta(**meta)
     run.name = file
 
     run.make_differential()

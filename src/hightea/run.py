@@ -2,6 +2,7 @@ import pathlib
 import json
 import re
 import numpy as np
+import pandas as pd
 from functools import wraps
 from copy import copy, deepcopy
 
@@ -21,27 +22,42 @@ class Run(object):
     """
     # TODO: consider using setters and getters instead of accessing objects directly
 
-    def __init__(self, bins=None, edges=None, name=None, nsetups=1):
-        self.initialised = False
-        self.meta = {}
-        self._isdifferential = False
-        if (bins):
-            self.bins = bins
-            self.edges = Run.convert_to_edges(self.bins)
-            self.values = np.zeros((len(bins),nsetups))
-            self.errors = np.zeros((len(bins),nsetups))
-        elif (edges):
-            self.edges = edges
-            self.bins = Run.convert_to_bins(self.edges)
-            self.values = np.zeros((len(bins),nsetups))
-            self.errors = np.zeros((len(bins),nsetups))
-        if (name):
-            self.meta['name'] = name
-        pass
+    def __init__(self, file=None, bins=None, edges=None, name=None, nsetups=1, **kwargs):
+        """Initialise either by filename and kwargs, or by specifying bins or edges"""
+        if (file):
+            self.load(file,**kwargs)
+        else:
+            if (bins):
+                self.bins = bins
+                self.edges = Run.convert_to_edges(self.bins)
+                self.values = np.zeros((len(bins),nsetups))
+                self.errors = np.zeros((len(bins),nsetups))
+            elif (edges):
+                self.edges = edges
+                self.bins = Run.convert_to_bins(self.edges)
+                self.values = np.zeros((len(bins),nsetups))
+                self.errors = np.zeros((len(bins),nsetups))
+            if (name):
+                self.meta['name'] = name
+
+    @property
+    def meta(self):
+        if hasattr(self,'_meta'):
+            return self._meta
+        else:
+            self._meta = {}
+            return self._meta
+
+    @meta.setter
+    def meta(self,meta):
+        self._meta = meta
 
     @property
     def name(self):
-        return self.meta.get('name')
+        res = self.meta.get('name')
+        if (res == None):
+            res = self.meta.get('file')
+        return res
 
     @name.setter
     def name(self, value, latex=False):
@@ -73,32 +89,76 @@ class Run(object):
         """Get number of setups in run"""
         return self.values.shape[1]
 
-    def update_meta(**info):
+    def update_meta(self,**info):
         """Update run meta information"""
         self.meta.update(info)
+
+    # TODO: debug and use set/getters below
+    # @property
+    # def bins(self):
+    #     return self._bins
+    #
+    # @bins.setter
+    # def bins(self, bins):
+    #     self._bins = bins
+    #     self._edges = Run.convert_to_edges(self._bins)
+    #
+    # @property
+    # def edges(self):
+    #     return self._edges
+    #
+    # @edges.setter
+    # def edges(self, edges):
+    #     self._edges = edges
+    #     self._bins = Run.convert_to_bins(self._edges)
+
 
     # TODO: loading from HEPDATA file
     def loading_methods(load):
         @wraps(load)
-        def inner(self,request):
+        def inner(self,request,**kwargs):
             if (isinstance(request,dict)):
-                load(self,request)
+                load(self,request,**kwargs)
             elif (isinstance(request,str)):
                 ext = pathlib.Path(request).suffix
+
                 if (ext) == '.json':
+                    """File format as provided by hightea"""
                     with open(request,'r') as f:
                         data = json.load(f)
                     data['file'] = request
-                    load(self,data)
+                    load(self,data,**kwargs)
+
+                if (ext) == '.csv':
+                    """File format as provided by HEPDATA"""
+                    df = pd.read_csv(request,comment='#')
+
+                    if not(len(df.columns) == 6):
+                        # TODO: generalise
+                        raise Exception('Expecting 6 columns, other cases not implemented yet')
+
+                    edges = [np.array([df.iat[0,1]] + list(df.iloc[:,2]))]
+                    bins = Run.convert_to_bins(edges)
+                    vals = df.iloc[:,3:6].values
+                    vals[:,1] += vals[:,0]
+                    vals[:,2] += vals[:,0]
+                    errs = np.zeros(vals.shape)
+                    data = {'mean': [[b,v] for b,v in zip(bins,vals)],\
+                            'std':  [[b,e] for b,e in zip(bins,errs)]}
+
+                    data['file'] = request
+                    load(self,data,**kwargs)
+
         return inner
 
     @loading_methods
-    def load(self,request):
+    def load(self,request,**kwargs):
         """Load data to Run instance.
         Uses hightea output interface as input.
         Can be fed with dictionary or path to JSON/YAML file.
         """
-        self.meta['file'] = request.get('filename')
+        self.meta = {}
+        self.meta['file'] = request.get('file')
 
         mean = request.get('mean',[])
         std = request.get('std',[])
@@ -118,8 +178,11 @@ class Run(object):
         self.edges = self.convert_to_edges(self.bins)
         self.make_differential()
 
-        if 'xsec' in request:
-            self.xsec = np.array(request.get('xsec'))
+        for key,value in kwargs.items():
+            self.meta[key] = value
+
+        # if 'xsec experiment' in request:
+        #     self.xsec = np.array(request.get('xsec'))
 
         # other
         self.name = request.get('name')
@@ -127,12 +190,16 @@ class Run(object):
 
 
     def is_differential(self):
-        return self._isdifferential
+        """Check if run set to be a differential distribution"""
+        if hasattr(self,'_is_differential'):
+            return self._is_differential
+        else:
+            return False
 
 
     def make_differential(self):
         """Turn histograms into differential distributions"""
-        if (self.is_differential()):
+        if self.is_differential():
             raise Exception("Already made differential")
         def area(bins):
             a = 1
@@ -146,7 +213,7 @@ class Run(object):
         for i,e in enumerate(self.errors):
             self.errors[i] = e/areas[i]
 
-        self._isdifferential = True
+        self._is_differential = True
         return self
 
 
@@ -203,6 +270,20 @@ class Run(object):
         newrun.meta = deepcopy(self.meta)
         newrun.meta['obs'] += f' [{line}]'
         return newrun
+
+
+    # @property
+    # def xsec(self):
+    #     if hasattr(self,'_xsec'):
+    #         return self._xsec
+    #     else:
+    #         # TODO: log warning here
+    #         return None
+    #
+    # @xsec.setter
+    # def xsec(self,v):
+    #     assert(len(v.shape) == 2)
+    #     self._xsec = v
 
 
     def __getitem__(self,sliced):
@@ -281,6 +362,15 @@ class Run(object):
                     binsList.append(bins + newbin)
             return binsList
 
+    # # TODO: test
+    # @staticmethod
+    # def full(dims, fill_value=0, scales=1):
+    #     """Get run with filled const values"""
+    #     run = Run()
+    #     run.edges = [np.array(range(d+1)) for d in dims if d > 0]
+    #     run.bins = Run.convert_to_bins(run.edges)
+    #     run.values = np.full(len(run.bins),scales)
+    #     run.errors = np.random.rand(len(run.bins),scales) / 10
 
     @staticmethod
     def random(dims, scales=1):
