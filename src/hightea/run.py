@@ -77,6 +77,7 @@ class Run(object):
         """Update run meta information"""
         self.meta.update(info)
 
+    # TODO: loading from HEPDATA file
     def loading_methods(load):
         @wraps(load)
         def inner(self,request):
@@ -149,19 +150,16 @@ class Run(object):
         return self
 
 
+    # TODO: test multiplication examples
     def __mul__(self,other):
         """Multiplication method"""
         res = self.minicopy()
         if (isinstance(other,Run)):
             assert(res.values.shape[0] == other.values.shape[0])
-            if (other.values.shape[1] == 1):
-                s = np.newaxis
-            elif (res.values.shape[1] == other.values.shape[1]):
-                s = slice(None)
 
-            res.values *= other.values[:,s]
-            res.errors = res.errors*other.values[:,s] + \
-                         res.values*other.errors[:,s]
+            res.values *= other.values
+            res.errors = res.errors*other.values + \
+                         res.values*other.errors
 
         elif (isinstance(denom,float)):
             res.values *= other
@@ -239,7 +237,7 @@ class Run(object):
 
 
     def flatten(self):
-        """Remove dimensions represented by one bin"""
+        """Remove dimensions represented by single bins"""
         self.edges = [x for x in self.edges if (len(x) > 2)]
         self.bins = Run.convert_to_bins(self.edges)
 
