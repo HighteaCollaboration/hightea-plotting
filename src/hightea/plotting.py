@@ -104,6 +104,11 @@ def plot_unrolled(ax, *runs, **kwargs):
                             color=_colorscheme[i],
                             label=f'data {i}' if run.name==None else run.name)
 
+        if (i == 0 and run.dim() > 1):
+            for j in range(1,run.dimensions()[0]):
+                ax.axvline(run.edges[1][0] + j*(run.edges[1][-1] - run.edges[1][0]),
+                            ls=':', color='gray')
+
     if (_showGrid):
         ax.grid(lw=0.2, c='gray')
 
@@ -130,7 +135,7 @@ def _plot_theory(ax,run,**kwargs):
         return list(a)+[a[-1]]
     _edges = _get_unrolled(run.edges)
     _color = kwargs.get('color')
-    _errshift = kwargs.get('errorshift',0)
+    _errshift = kwargs.get('errshift',0)
     _showScaleBand = kwargs.get('showScaleBand', True)
     _showErrors = kwargs.get('showErrors', True)
 

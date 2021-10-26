@@ -83,6 +83,10 @@ class Run(object):
         """Get dimension of the run"""
         return len(self.edges)
 
+    def dimensions(self):
+        """Get dimensions for each axis"""
+        return [len(x)-1 for x in self.edges]
+
     def nsetups(self):
         """Get number of setups in run"""
         return self.values.shape[1]
@@ -242,9 +246,14 @@ class Run(object):
         if (isinstance(other,Run)):
             assert(res.values.shape[0] == other.values.shape[0])
 
+            warnings = np.geterr()
+            np.seterr(invalid='ignore')
+
             res.values /= other.values
             res.errors = res.errors/other.values + \
                   res.values*other.errors/other.values**2
+
+            np.seterr(**warnings)
 
         elif (isinstance(denom,float)):
             res.values /= other
