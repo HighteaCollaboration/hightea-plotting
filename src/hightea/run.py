@@ -146,7 +146,8 @@ class Run(object):
                     vals[:,2] += vals[:,0]
                     errs = np.zeros(vals.shape)
                     data = {'mean': [[b,v] for b,v in zip(bins,vals)],\
-                            'std':  [[b,e] for b,e in zip(bins,errs)]}
+                            'std':  [[b,e] for b,e in zip(bins,errs)],\
+                            'meta': {'differential': True}}
 
                     data['file'] = request
                     load(self,data,**kwargs)
@@ -178,10 +179,11 @@ class Run(object):
         self.values = np.array(self.values)
         self.errors = np.array(self.errors)
         self.edges = self.convert_to_edges(self.bins)
-        self.make_differential()
 
-        # if 'xsec experiment' in request:
+        # if 'xsec' in request:
         #     self.xsec = np.array(request.get('xsec'))
+        if 'meta' in request:
+            self.meta.update(request.get('meta'))
 
         # other
         self.name = request.get('name')
@@ -191,13 +193,33 @@ class Run(object):
         for key,value in kwargs.items():
             self.meta[key] = value
 
+        if not(self.is_differential()):
+            self.make_differential()
+
 
     def is_differential(self):
         """Check if run set to be a differential distribution"""
-        if hasattr(self,'_is_differential'):
-            return self._is_differential
-        else:
-            return False
+        return self.meta.get('differential',False)
+
+
+    def make_histogramlike(self):
+        """Turn differential distribution to histogram"""
+        if not(self.is_differential()):
+            raise Exception("Already is histogram-like")
+        def area(bins):
+            a = 1
+            for b in bins: a *= b[1]-b[0]
+            return a
+        areas = [ area(b) for b in self.bins ]
+
+        for i,v in enumerate(self.values):
+            self.values[i] = v*areas[i]
+
+        for i,e in enumerate(self.errors):
+            self.errors[i] = e*areas[i]
+
+        self.meta['differential'] = False
+        return self
 
 
     def make_differential(self):
@@ -216,8 +238,23 @@ class Run(object):
         for i,e in enumerate(self.errors):
             self.errors[i] = e/areas[i]
 
-        self._is_differential = True
+        self.meta['differential'] = True
         return self
+
+
+    # TODO: test addition tests
+    def __add__(self,other):
+        """Adding method"""
+        res = self.minicopy()
+        if (isinstance(other,Run)):
+            assert(res.values.shape[0] == other.values.shape[0])
+
+            res.values += other.values
+            res.errors = np.sqrt(res.errors**2 + other.errors**2)
+
+        else:
+            raise Exception("Add operation failed")
+        return res
 
 
     # TODO: test multiplication examples
@@ -231,7 +268,7 @@ class Run(object):
             res.errors = res.errors*other.values + \
                          res.values*other.errors
 
-        elif (isinstance(denom,float)):
+        elif (isinstance(other,float)):
             res.values *= other
             res.errors *= other
         else:
@@ -251,13 +288,20 @@ class Run(object):
             res.errors = res.errors/other.values + \
                   res.values*other.errors/other.values**2
 
-        elif (isinstance(denom,float)):
+        elif (isinstance(other,float)):
             res.values /= other
             res.errors /= other
         else:
             raise Exception("Div operation failed")
             np.seterr(**warnings)
         return res
+
+
+    # TODO: add more checks
+    def __eq__(self, other):
+        return (self.bins == other.bins) and \
+               (self.values == other.values).all() and \
+               (self.errors == other.errors).all()
 
 
     # TODO: generalise
@@ -331,9 +375,23 @@ class Run(object):
         self.bins = Run.convert_to_bins(self.edges)
 
 
-    # TODO: define
-    def to_json(self):
-        pass
+    def to_htdict(self):
+        """Get dictionary in hightea format from this run"""
+        res = {}
+        res['mean'] = list(zip(self.bins, self.values.tolist()))
+        res['std'] = list(zip(self.bins, self.errors.tolist()))
+        for attr in 'xsec'.split():
+            if hasattr(self,attr):
+                res[attr] = getattr(self,attr)
+
+        res['meta'] = self.meta
+        return res
+
+
+    def to_json(self,file):
+        """Dump run to JSON file in hightea format"""
+        with open(file, 'w') as f:
+            json.dump(self.to_htdict(), f)
 
 
     @staticmethod

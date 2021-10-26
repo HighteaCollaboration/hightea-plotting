@@ -22,6 +22,13 @@ def test_loading_json():
     assert(run.bins[0] == [[0,1]])
     assert(run.is_differential())
 
+def test_makehistogram_json():
+    run = Run('tests/input/2d.json')
+    newrun = deepcopy(run)
+    run.make_histogramlike()
+    run.make_differential()
+    assert(run == newrun)
+
 ##############################
 #  bin to edges conversions  #
 ##############################
@@ -93,5 +100,13 @@ def test_name():
     run = Run('tests/input/2d.json', name='testname')
     assert(run.name == 'testname')
 
+##########################
+#  Arithmetic operators  #
+##########################
 
+def test_eq():
+    run = Run.random((2,3),3)
+    new = run.minicopy()
+    # TODO revise this test
+    assert(new == run)
 
