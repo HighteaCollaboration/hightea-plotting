@@ -8,9 +8,9 @@ from .run import Run
 #  Matplotlib parameters  #
 ###########################
 plt.rcParams['axes.xmargin'] = 0
-colorscheme = ['black', '#1f77f4', '#2ca02c',
-               '#d62728', '#e377c2', '#8c564b',
-               '#1f77b4', '#9467bd', '#17becf']
+colorscheme = ['tab:blue', 'tab:purple', 'tab:green',
+               'tab:red', 'tab:cyan', 'tab:orange',
+               'tab:pink', 'tab:olive', 'tab:brown']
 
 def _select_keys(d, *args):
     return {k:d[k] for k in d.keys() if k in args}
@@ -142,13 +142,15 @@ def _plot_theory(ax,run,**kwargs):
     _errshift = kwargs.get('errshift',0)
     _showScaleBand = kwargs.get('showScaleBand', True)
     _showErrors = kwargs.get('showErrors', True)
+    _linewidth = kwargs.get('linewidth', 2.5)
+    _alpha = kwargs.get('alpha', .3)
 
     ax.step(_edges,
             m(run.v()),
             where='post',
             color=_color,
             label=kwargs.get('label'),
-            **_select_keys(kwargs,'linewidth','alpha'))
+            linewidth=_linewidth)
 
     if (_showScaleBand):
         ax.fill_between(_edges,
@@ -157,7 +159,7 @@ def _plot_theory(ax,run,**kwargs):
                         step='post',
                         linewidth=0.0,
                         color=_color,
-                        alpha=0.2)
+                        alpha=_alpha)
 
     if (_showErrors):
         errXs = (.5 + _errshift)*_edges[1:] +\
@@ -181,6 +183,8 @@ def _plot_experiment(ax,run,**kwargs):
     _ms = kwargs.get('ms', 3)
     _capsize = kwargs.get('capsize', 5.)
     _label = kwargs.get('label')
+    _linewidth = kwargs.get('linewidth', 2.5)
+    _alpha = kwargs.get('alpha', .3)
 
     ax.errorbar(x=_xs,
                 y=run.v(),
@@ -190,5 +194,6 @@ def _plot_experiment(ax,run,**kwargs):
                 ms=_ms,
                 color=_color,
                 capsize=_capsize,
-                linestyle='None')
+                linestyle='None',
+                linewidth=_linewidth)
 
