@@ -37,31 +37,24 @@ def plot(*runs, **kwargs):
     fig = plt.figure(**_select_keys(kwargs,'figsize'))
 
     _showLegend = kwargs.get('legend', True)
-    _showGrid = kwargs.get('grid', True)
     _show = kwargs.get('show', True)
     _output = kwargs.get('output', None)
     _ratio = kwargs.get('ratio', None)
+    _showRatio = not(_ratio == None)
 
     plt.suptitle(kwargs.get('title', runs[0].meta.get('obs')))
 
-    ax = plt.gca()
-
-    # ref = runs[0].mincopy()
-    # ratio_runs = []
-    # for i,r in enumerate(runs):
-    #     ratio_runs.append(runs[i] / ref)
-    # plot_histograms_1d(ax, *ratio_runs, **kwargs)
+    ax = fig.add_subplot(3, 1, (1, 2)) if (_showRatio) else plt.gca()
     plot_histograms_1d(ax, *runs, **kwargs)
 
-    if (_ratio):
-        axes[i]
+    if (_showRatio):
+        ax = fig.add_subplot(3, 1, 3)
+        ratio_runs = []
+        for i,r in enumerate(runs):
+            ratio_runs.append(runs[i] / runs[_ratio][0])
+        plot_histograms_1d(ax, *ratio_runs, **kwargs, legend=False)
 
-    if (_showLegend):
-        ax.legend()
-        pass
-
-    if (_showGrid):
-        ax.grid(lw=0.2, c='gray')
+    plt.tight_layout()
 
     if (_output):
         ext = _output.split('.')[-1]
@@ -84,7 +77,9 @@ def plot_histograms_1d(ax, *runs, **kwargs):
 
     _showScaleBand = kwargs.get('showScaleBand', True)
     _showErrors = kwargs.get('showErrors', True)
+    _showGrid = kwargs.get('grid', True)
     _colorscheme = kwargs.get('colorscheme',colorscheme)
+    _showLegend = kwargs.get('legend', True)
 
     for i,run in enumerate(runs):
         if (run.dim() != 1):
@@ -93,17 +88,19 @@ def plot_histograms_1d(ax, *runs, **kwargs):
         def m(a):
             return list(a)+[a[-1]]
 
-        ax.step(run.edges[0],
-                m(run.values[:,0]),
+        _edges = run.edges[0]
+
+        ax.step(_edges,
+                m(run.v()),
                 where='post',
                 color=_colorscheme[i],
                 label=run.meta.get('name',f'run {i}'),
                 **_select_keys(kwargs,'linewidth','alpha'))
 
         if (_showScaleBand):
-            ax.fill_between(run.edges[0],
-                            m(np.amin(run.values, axis=1)),
-                            m(np.amax(run.values, axis=1)),
+            ax.fill_between(_edges,
+                            m(run.lower()),
+                            m(run.upper()),
                             step='post',
                             linewidth=0.0,
                             color=_colorscheme[i],
@@ -111,11 +108,18 @@ def plot_histograms_1d(ax, *runs, **kwargs):
 
         if (_showErrors):
             errXshift = .03*(i-(len(runs)-1)/2)
-            errXs = (.5 + errXshift)*run.edges[0][1:] +\
-                    (.5 - errXshift)*run.edges[0][:-1]
+            errXs = (.5 + errXshift)*_edges[1:] +\
+                    (.5 - errXshift)*_edges[:-1]
             ax.errorbar(errXs,
-                        run.values[:,0],
-                        yerr=run.errors[:,0],
+                        run.v(),
+                        yerr=run.e(),
                         color=_colorscheme[i],
                         linestyle='')
+
+    if (_showGrid):
+        ax.grid(lw=0.2, c='gray')
+
+    if (_showLegend):
+        ax.legend()
+
 
