@@ -62,23 +62,10 @@ def test_convert_to_bins_2d():
 #  slicing methods  #
 #####################
 
-def test_slicing_1d():
-    run = Run()
-    run.load({'mean': [[[[0,1]],[1.0]], [[[1,2]],[2.0]], [[[2,3]],[3.0]]],
-              'std':  [[[[0,1]],[0.1]], [[[1,2]],[0.2]], [[[2,3]],[0.3]]]})
-    newrun = run[1:]
-    assert((run.edges[0] == np.array([0,1,2,3])).all())
-    assert((newrun.edges[0] == np.array([1,2,3])).all())
-    assert(len(newrun.bins) == len(newrun.values))
-
-def test_slicing_2d():
-    run = Run(bins = [[[0,1],[0,1]],[[0,1],[1,2]],[[1,2],[0,1]],[[1,2],[1,2]]])
-    run.values = np.ones((len(run.bins),1))
-    newrun = run[1]
-    assert((newrun.edges[0] == np.array([1,2])).all())
-    assert(len(newrun.bins) == len(newrun.values))
-    newrun.flatten()
-    assert(len(newrun.edges) == 1)
+def test_slicing_scale():
+    run = Run.random((2,3),4)
+    assert((run[1:].nsetups()) == 3)
+    assert((run[0].nsetups()) == 1)
 
 def test_random():
     run = Run.random((2,3,1),3)

@@ -69,6 +69,10 @@ class Run(object):
         """Get dimension of the run"""
         return len(self.edges)
 
+    def nsetups(self):
+        """Get number of setups in run"""
+        return self.values.shape[1]
+
     def update_meta(**info):
         """Update run meta information"""
         self.meta.update(info)
@@ -147,7 +151,7 @@ class Run(object):
 
     def __mul__(self,other):
         """Multiplication method"""
-        res = self.mincopy()
+        res = self.minicopy()
         if (isinstance(other,Run)):
             assert(res.values.shape[0] == other.values.shape[0])
             if (other.values.shape[1] == 1):
@@ -170,17 +174,13 @@ class Run(object):
     # TODO: test division examples
     def __truediv__(self,other):
         """Run division method. Supports division by a constant."""
-        res = self.mincopy()
+        res = self.minicopy()
         if (isinstance(other,Run)):
             assert(res.values.shape[0] == other.values.shape[0])
-            if (other.values.shape[1] == 1):
-                s = np.newaxis
-            elif (res.values.shape[1] == other.values.shape[1]):
-                s = slice(None)
 
-            res.values /= other.values[:,s]
-            res.errors = res.errors/other.values[:,s] + \
-                  res.values*other.errors[:,s]/other.values[:,s]**2
+            res.values /= other.values
+            res.errors = res.errors/other.values + \
+                  res.values*other.errors/other.values**2
 
         elif (isinstance(denom,float)):
             res.values /= other
@@ -208,35 +208,20 @@ class Run(object):
 
 
     def __getitem__(self,sliced):
-        """Get a subset of the full run (operating with dimensional bins)"""
-
-        # this is to use edges as dimensional bins
-        def increase_slice_stop(s):
-            return s if (s.stop == None) else slice(s.start, s.stop+1, s.step)
-
-        edges = deepcopy(self.edges)
+        """Get a run with selected setups"""
         if isinstance(sliced,list):
-            for i,s in enumerate(sliced):
-                edges[i] = edges[i][increase_slice_stop(s)]
-        elif isinstance(sliced,slice):
-            edges[0] = edges[0][increase_slice_stop(sliced)]
-        else:
-            sliced = slice(sliced, sliced+2, None)
-            edges[0] = edges[0][sliced]
+            raise Exception('List not expected')
+        elif isinstance(sliced,int):
+            sliced = slice(sliced,sliced+1)
 
-        bins = Run.convert_to_bins(edges)
-        run = Run(bins)
-
-        selection = [b in run.bins for b in self.bins]
-        run.values = deepcopy(self.values[selection,:])
-        run.errors = deepcopy(self.errors[selection,:])
-
-        for attr in 'obs smearing nevents histid'.split():
-            if (attr in self.meta):
-                run.meta[attr] = deepcopy(self.meta[attr])
+        run = deepcopy(self)
+        for a in 'values errors xsec'.split():
+            if hasattr(run,a):
+                setattr(run,a,getattr(self,a)[:,sliced])
         return run
 
-    def mincopy(self):
+
+    def minicopy(self):
         """Minimal copy: only data"""
         run = Run()
         run.bins = deepcopy(self.bins)
@@ -247,14 +232,21 @@ class Run(object):
             run.xsec = deepcopy(self.xsec)
         return run
 
+
     def deepcopy(self):
         """Deepcopy the whole run data"""
         return deepcopy(self)
+
 
     def flatten(self):
         """Remove dimensions represented by one bin"""
         self.edges = [x for x in self.edges if (len(x) > 2)]
         self.bins = Run.convert_to_bins(self.edges)
+
+
+    # TODO: define
+    def to_json(self):
+        pass
 
 
     @staticmethod
