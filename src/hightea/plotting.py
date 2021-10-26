@@ -20,13 +20,17 @@ def _convert_args_to_Runs(plotfunc):
     @wraps(plotfunc)
     def inner(*args, **kwargs):
         runs = []
-        for a in args:
-            if not(isinstance(a, Run)):
-                run = Run()
-                run.load(a)
-                runs.append(run)
+        def _convert_to_runs(runs, obj):
+            if isinstance(obj, list) or isinstance(obj, tuple):
+                for o in obj:
+                    _convert_to_runs(runs, o)
             else:
-                runs.append(a)
+                if isinstance(obj,str):
+                    runs.append(Run(obj))
+                else:
+                    runs.append(obj)
+        for a in args:
+            _convert_to_runs(runs, a)
         plotfunc(*runs, **kwargs)
     return inner
 

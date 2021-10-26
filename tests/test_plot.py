@@ -4,6 +4,9 @@ from src.hightea.stripper import convert_to_Run, load_to_Run
 def test_plot():
     hyt.plot('tests/input/simple1d.json', show=False)
 
+def test_plot_lists():
+    hyt.plot(['tests/input/simple1d.json']*2, show=False)
+
 def test_ratioPlot():
     hyt.plot(load_to_Run('tests/input/ppWpjs_0_nnlo.xml'),
              load_to_Run('tests/input/ppWpjs_T_nnlo.xml'),
