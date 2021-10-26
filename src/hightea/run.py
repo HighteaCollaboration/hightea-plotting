@@ -243,23 +243,20 @@ class Run(object):
     def __truediv__(self,other):
         """Run division method. Supports division by a constant."""
         res = self.minicopy()
+        warnings = np.geterr(); np.seterr(invalid='ignore')
         if (isinstance(other,Run)):
             assert(res.values.shape[0] == other.values.shape[0])
-
-            warnings = np.geterr()
-            np.seterr(invalid='ignore')
 
             res.values /= other.values
             res.errors = res.errors/other.values + \
                   res.values*other.errors/other.values**2
-
-            np.seterr(**warnings)
 
         elif (isinstance(denom,float)):
             res.values /= other
             res.errors /= other
         else:
             raise Exception("Div operation failed")
+            np.seterr(**warnings)
         return res
 
 
@@ -317,6 +314,9 @@ class Run(object):
         run.errors = deepcopy(self.errors)
         if hasattr(self,'xsec'):
             run.xsec = deepcopy(self.xsec)
+        for attr in 'experiment'.split():
+            if attr in self.meta:
+                run.update_meta(**{attr:self.meta.get(attr)})
         return run
 
 
