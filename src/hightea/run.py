@@ -22,7 +22,7 @@ class Run(object):
     """
     # TODO: consider using setters and getters instead of accessing objects directly
 
-    def __init__(self, file=None, bins=None, edges=None, name=None, nsetups=1, **kwargs):
+    def __init__(self, file=None, bins=None, edges=None, nsetups=1, **kwargs):
         """Initialise either by filename and kwargs, or by specifying bins or edges"""
         if (file):
             self.load(file,**kwargs)
@@ -37,8 +37,6 @@ class Run(object):
                 self.bins = Run.convert_to_bins(self.edges)
                 self.values = np.zeros((len(bins),nsetups))
                 self.errors = np.zeros((len(bins),nsetups))
-            if (name):
-                self.meta['name'] = name
 
     @property
     def meta(self):
@@ -178,15 +176,16 @@ class Run(object):
         self.edges = self.convert_to_edges(self.bins)
         self.make_differential()
 
-        for key,value in kwargs.items():
-            self.meta[key] = value
-
         # if 'xsec experiment' in request:
         #     self.xsec = np.array(request.get('xsec'))
 
         # other
         self.name = request.get('name')
         self.variable = request.get('variable')
+
+        # Final corrections
+        for key,value in kwargs.items():
+            self.meta[key] = value
 
 
     def is_differential(self):
