@@ -85,6 +85,13 @@ def test_div():
     newrun = divrun / run
     assert(np.isclose(newrun.values.flatten(),np.ones(2*3*3)).all())
 
+######################
+#  Passing metadata  #
+######################
+
+def test_name():
+    run = Run('tests/input/2d.json', name='testname')
+    assert(run.name == 'testname')
 
 
 
