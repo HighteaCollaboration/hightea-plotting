@@ -51,18 +51,20 @@ def plot(*runs, **kwargs):
 
     plt.suptitle(kwargs.get('title', obs))
 
-    ax = fig.add_subplot(3, 1, (1, 2)) if (_showRatio) else plt.gca()
-    plot_histograms_1d(ax, *runs, **kwargs)
+    ax1 = fig.add_subplot(3, 1, (1, 2)) if (_showRatio) else plt.gca()
+    plot_unrolled(ax1, *runs, **kwargs)
 
     if (_logscale):
-        ax.set_yscale('log')
+        ax1.set_yscale('log')
 
     if (_showRatio):
-        ax = fig.add_subplot(3, 1, 3)
+        ax2 = fig.add_subplot(3, 1, 3, sharex = ax1)
         ratio_runs = []
         for i,r in enumerate(runs):
             ratio_runs.append(runs[i] / runs[_ratio][0])
-        plot_histograms_1d(ax, *ratio_runs, **kwargs, legend=False)
+        plot_unrolled(ax2, *ratio_runs, **kwargs, legend=False)
+        ylim = ax2.get_ylim()
+        ax2.set_ylim(max(ylim[0], -10), min(ylim[1], 10))
         plt.tight_layout()
 
     if (_output):
@@ -81,7 +83,7 @@ def plot(*runs, **kwargs):
     plt.clf()
 
 
-def plot_histograms_1d(ax, *runs, **kwargs):
+def plot_unrolled(ax, *runs, **kwargs):
     """Procedure to draw 1d runs"""
 
     _showGrid = kwargs.get('grid', True)
@@ -89,11 +91,11 @@ def plot_histograms_1d(ax, *runs, **kwargs):
     _showLegend = kwargs.get('legend', True)
 
     for i,run in enumerate(runs):
-        if (run.dim() != 1):
-            raise Exception('2D histograms not supported yet')
+        # if (run.dim() != 1):
+        #     raise Exception('2D histograms not supported yet')
 
         if not(run.meta.get('experiment',False)):
-            _plot_theory_1d(ax,run,**_select_keys(kwargs,'linewidth','alpha'),
+            _plot_theory(ax,run,**_select_keys(kwargs,'linewidth','alpha'),
                             color=_colorscheme[i],
                             label=f'run {i}' if run.name==None else run.name,
                             errshift=.03*(i-(len(runs)-1)/2))
@@ -109,11 +111,24 @@ def plot_histograms_1d(ax, *runs, **kwargs):
         ax.legend()
 
 
-def _plot_theory_1d(ax,run,**kwargs):
+def _get_unrolled(edges):
+    """Return just bins or unrolled bins for 2d plot"""
+    if len(edges) == 1:
+        return edges[0]
+    elif len(edges) == 2:
+        unrolled = list(edges[1])
+        dims = [len(x)-1 for x in edges]
+        for i in range(1,dims[0]):
+            unrolled += list(edges[1][1:] + i*(edges[1][-1] - edges[1][0]))
+        unrolled = np.array(unrolled)
+        return unrolled
+
+
+def _plot_theory(ax,run,**kwargs):
     """Support function to plot theoretical observable given ax handle"""
     def m(a):
         return list(a)+[a[-1]]
-    _edges = run.edges[0]
+    _edges = _get_unrolled(run.edges)
     _color = kwargs.get('color')
     _errshift = kwargs.get('errorshift',0)
     _showScaleBand = kwargs.get('showScaleBand', True)
@@ -147,7 +162,7 @@ def _plot_theory_1d(ax,run,**kwargs):
 
 def _plot_experiment(ax,run,**kwargs):
     """Support function to plot experimental observable"""
-    _edges = run.edges[0]
+    _edges = _get_unrolled(run.edges)
     _xs = np.array([.5*(l+r) for l,r in zip(_edges[:-1],_edges[1:])])
     _color = kwargs.get('color')
     _errshift = kwargs.get('errorshift',0)
