@@ -254,9 +254,6 @@ class Run(object):
         return res
 
 
-    __rmul__ = __mul__
-
-
     def __mul__(self,other):
         """Multiplication method"""
         res = self.minicopy()
@@ -273,6 +270,9 @@ class Run(object):
         else:
             raise Exception("Mul operation failed")
         return res
+
+
+    __rmul__ = __mul__
 
 
     def __truediv__(self,other):
