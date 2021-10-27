@@ -262,9 +262,9 @@ class Run(object):
         if (isinstance(other,Run)):
             assert(res.values.shape[0] == other.values.shape[0])
 
-            res.values *= other.values
             res.errors = res.errors*other.values + \
                          res.values*other.errors
+            res.values *= other.values
 
         elif isinstance(other,float) or isinstance(other,int):
             res.values *= other
@@ -284,9 +284,9 @@ class Run(object):
         if (isinstance(other,Run)):
             assert(res.values.shape[0] == other.values.shape[0])
 
-            res.values /= other.values
             res.errors = res.errors/other.values + \
                   res.values*other.errors/other.values**2
+            res.values /= other.values
 
         elif isinstance(other,float) or isinstance(other,int):
             res.values /= other
