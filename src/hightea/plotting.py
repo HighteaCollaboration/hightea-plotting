@@ -47,6 +47,7 @@ def plot(*runs, **kwargs):
     _logscale = kwargs.get('logscale', None)
     _showRatio = not(_ratio == None)
     obs = runs[0].info.get('obs','')
+    binning = runs[0].info.get('binning',[])
 
     if (_logscale == None):
         for k in 'transverse energy mass'.split():
@@ -70,6 +71,9 @@ def plot(*runs, **kwargs):
         ylim = ax2.get_ylim()
         ax2.set_ylim(max(ylim[0], -10), min(ylim[1], 10))
         plt.tight_layout()
+
+    if (binning):
+        plt.xlabel(binning[0].get('variable'))
 
     if (_output):
         ext = _output.split('.')[-1]
