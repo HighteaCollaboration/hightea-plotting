@@ -13,7 +13,7 @@ class Run(object):
     bins:   stored as List(List(List(float)))
             for example: [ [[0,1],[2,3]], [[1,2],[2,3] ] ]
                 represents 2d observable with edges [0,1,2], [2,3]
-    edges:  stored as List(array(float))
+    edges:  stored as List(List(float))
     values: stored as array with (X,Y) dimensions,
             where X is the number of bins,
             and Y is the results at different scales.
@@ -135,7 +135,7 @@ class Run(object):
                         # TODO: generalise
                         raise Exception('Expecting 6 columns, other cases not implemented yet')
 
-                    edges = [np.array([df.iat[0,1]] + list(df.iloc[:,2]))]
+                    edges = [[df.iat[0,1]] + list(df.iloc[:,2])]
                     bins = Run.convert_to_bins(edges)
                     vals = df.iloc[:,3:6].values
                     vals[:,1] += vals[:,0]
@@ -184,8 +184,9 @@ class Run(object):
             self.meta.update(request.get('meta'))
 
         # other
-        self.name = request.get('name')
-        self.variable = request.get('variable')
+        # TODO: review location of this
+        # self.name = request.get('name')
+        # self.variable = request.get('variable')
 
         # Final corrections
         for key,value in kwargs.items():
@@ -295,11 +296,33 @@ class Run(object):
         return res
 
 
-    # TODO: add more checks
+    def _get_attributes(self):
+        """Get attributes from the class"""
+        return [attr for attr in dir(self)
+                if not(callable(getattr(self, attr)))
+                and not(attr.startswith('_'))]
+
+
+    def _attributes_equal(self,other,attr):
+        """Check whether attribute is the same for two instances"""
+        check = (getattr(self,attr) == getattr(other,attr))
+        return check if (isinstance(check,bool)) else check.all()
+
+
     def __eq__(self, other):
-        return (self.bins == other.bins) and \
-               (self.values == other.values).all() and \
-               (self.errors == other.errors).all()
+        """Check if runs contain identical information
+
+        All attributes are checked except meta information
+        """
+        members = self._get_attributes()
+        other_members = other._get_attributes()
+        if not(members == other_members):
+            return False
+        for m in members:
+            if not(m == 'meta'):
+                if not(self._attributes_equal(other,m)):
+                    return False
+        return True
 
 
     # TODO: generalise
@@ -405,7 +428,7 @@ class Run(object):
                 else:
                     if len(dimedges)>2 and bins[dim][0] == dimedges[0]:
                         break
-            edgesList.append(np.array(dimedges))
+            edgesList.append(dimedges)
         return edgesList
 
 
@@ -428,7 +451,7 @@ class Run(object):
     def full(dims, scales=1, fill_value=0):
         """Get run with filled const values"""
         run = Run()
-        run.edges = [np.array(range(d+1)) for d in dims if d > 0]
+        run.edges = [list(range(d+1)) for d in dims if d > 0]
         run.values = np.full((len(run.bins),scales),float(fill_value))
         run.errors = np.full((len(run.bins),scales),0.)
         return run
@@ -437,7 +460,7 @@ class Run(object):
     def random(dims, scales=1):
         """Get random multi-dimensional run for testing purposes"""
         run = Run()
-        run.edges = [np.array(range(d+1)) for d in dims if d > 0]
+        run.edges = [list(range(d+1)) for d in dims if d > 0]
         run.values = np.random.rand(len(run.bins),scales)
         run.errors = np.random.rand(len(run.bins),scales) / 10
         return run
@@ -450,4 +473,4 @@ class Run(object):
 
     # TODO: nice printout
     def __repr__(self):
-        return self.name
+        return self.meta.get('name')

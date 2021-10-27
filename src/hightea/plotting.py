@@ -123,12 +123,13 @@ def plot_unrolled(ax, *runs, **kwargs):
 def _get_unrolled(edges):
     """Return just bins or unrolled bins for 2d plot"""
     if len(edges) == 1:
-        return edges[0]
+        return np.array(edges[0])
     elif len(edges) == 2:
-        unrolled = list(edges[1])
+        unrolled = edges[1].copy()
         dims = [len(x)-1 for x in edges]
         for i in range(1,dims[0]):
-            unrolled += list(edges[1][1:] + i*(edges[1][-1] - edges[1][0]))
+            unrolled.extend(list(np.array(edges[1][1:])
+                            + i*(edges[1][-1] - edges[1][0])))
         unrolled = np.array(unrolled)
         return unrolled
 
@@ -173,7 +174,7 @@ def _plot_theory(ax,run,**kwargs):
 
 def _plot_experiment(ax,run,**kwargs):
     """Support function to plot experimental observable"""
-    _edges = _get_unrolled(run.edges)
+    _edges = np.array(_get_unrolled(run.edges))
     _xs = np.array([.5*(l+r) for l,r in zip(_edges[:-1],_edges[1:])])
     _color = kwargs.get('color')
     _errshift = kwargs.get('errorshift',0)

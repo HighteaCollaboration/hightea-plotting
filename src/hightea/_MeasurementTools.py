@@ -99,14 +99,14 @@ class MeasurementTools:
         [ [dim1edge1 dim1edge2 ... dim1edgen ]
           [dim2edge1 dim2edge2 ... dim2edgen ]
           ...                                  ]
-        as numpy array
+        as a list of lists
         """
         hs = hist.find('histogram')
         edges = hs.findall('edges')
         bins = []
         for edge in edges :
-          bins.append(np.array(list(map(float,edge.text.split(',')))))
-        return bins # np.array(bins)
+          bins.append(list(map(float,edge.text.split(','))))
+        return bins
 
     def histogramSmearing(self,hist):
         """
