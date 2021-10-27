@@ -46,7 +46,7 @@ def plot(*runs, **kwargs):
     _ratio = kwargs.get('ratio', None)
     _logscale = kwargs.get('logscale', None)
     _showRatio = not(_ratio == None)
-    obs = runs[0].meta.get('obs','')
+    obs = runs[0].info.get('obs','')
 
     if (_logscale == None):
         for k in 'transverse energy mass'.split():
@@ -98,7 +98,7 @@ def plot_unrolled(ax, *runs, **kwargs):
         # if (run.dim() != 1):
         #     raise Exception('2D histograms not supported yet')
 
-        if not(run.meta.get('experiment',False)):
+        if not(run.info.get('experiment',False)):
             _plot_theory(ax,run,**_select_keys(kwargs,'linewidth','alpha'),
                             color=_colorscheme[i],
                             label=f'run {i}' if run.name==None else run.name,

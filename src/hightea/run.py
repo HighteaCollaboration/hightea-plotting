@@ -18,7 +18,7 @@ class Run(object):
             where X is the number of bins,
             and Y is the results at different scales.
     errors: stored similarly to values
-    meta:   other information related to the run
+    info:   other information related to the run
     """
 
     def __init__(self, file=None, bins=None, edges=None, nsetups=1, **kwargs):
@@ -34,7 +34,7 @@ class Run(object):
                 self.edges = edges
                 self.values = np.zeros((len(bins),nsetups))
                 self.errors = np.zeros((len(bins),nsetups))
-            self.meta = {}
+            self.info = {}
 
     def v(self):
         """Get values at central scale"""
@@ -64,34 +64,34 @@ class Run(object):
         """Get number of setups in run"""
         return self.values.shape[1]
 
-    def update_meta(self,**info):
-        """Update run meta information"""
-        self.meta.update(info)
+    def update_info(self,**info):
+        """Update run information"""
+        self.info.update(info)
 
     @property
-    def meta(self):
-        if hasattr(self,'_meta'):
-            return self._meta
+    def info(self):
+        if hasattr(self,'_info'):
+            return self._info
         else:
-            self._meta = {}
-            return self._meta
+            self._info = {}
+            return self._info
 
-    @meta.setter
-    def meta(self,meta):
-        self._meta = meta
+    @info.setter
+    def info(self,info):
+        self._meta = info
 
     @property
     def name(self):
-        res = self.meta.get('name')
+        res = self.info.get('name')
         if (res == None):
-            res = self.meta.get('file')
+            res = self.info.get('file')
         return res
 
     @name.setter
     def name(self, value, latex=False):
         if (latex):
             value = re.sub('_', '\\_', value)
-        self.meta['name'] = value
+        self.info['name'] = value
 
     @property
     def bins(self):
@@ -144,7 +144,7 @@ class Run(object):
                     errs = np.zeros(vals.shape)
                     data = {'mean': [[b,v] for b,v in zip(bins,vals)],\
                             'std':  [[b,e] for b,e in zip(bins,errs)],\
-                            'meta': {'differential': True}}
+                            'info': {'differential': True}}
 
                     data['file'] = request
                     load(self,data,**kwargs)
@@ -157,8 +157,8 @@ class Run(object):
         Uses hightea output interface as input.
         Can be fed with dictionary or path to JSON/YAML file.
         """
-        self.meta = {}
-        self.meta['file'] = request.get('file')
+        self.info = {}
+        self.info['file'] = request.get('file')
 
         mean = request.get('mean',[])
         std = request.get('std',[])
@@ -181,8 +181,8 @@ class Run(object):
         if 'xsec' in request:
             self.xsec = np.array(request.get('xsec'))
 
-        if 'meta' in request:
-            self.meta.update(request.get('meta'))
+        if 'info' in request:
+            self.info.update(request.get('info'))
 
         # other
         # TODO: review location of this
@@ -191,7 +191,7 @@ class Run(object):
 
         # Final corrections
         for key,value in kwargs.items():
-            self.meta[key] = value
+            self.info[key] = value
 
         if not(self.is_differential()):
             self.make_differential()
@@ -199,7 +199,7 @@ class Run(object):
 
     def is_differential(self):
         """Check if run set to be a differential distribution"""
-        return self.meta.get('differential',False)
+        return self.info.get('differential',False)
 
 
     def make_histogramlike(self):
@@ -218,7 +218,7 @@ class Run(object):
         for i,e in enumerate(self.errors):
             self.errors[i] = e*areas[i]
 
-        self.meta['differential'] = False
+        self.info['differential'] = False
         return self
 
 
@@ -238,7 +238,7 @@ class Run(object):
         for i,e in enumerate(self.errors):
             self.errors[i] = e/areas[i]
 
-        self.meta['differential'] = True
+        self.info['differential'] = True
         return self
 
 
@@ -311,16 +311,16 @@ class Run(object):
 
 
     def __eq__(self, other):
-        """Check if runs contain identical information
+        """Check if runs contain identical values
 
-        All attributes are checked except meta information
+        All attributes are checked except additional information
         """
         members = self._get_attributes()
         other_members = other._get_attributes()
         if not(members == other_members):
             return False
         for m in members:
-            if not(m == 'meta'):
+            if not(m == 'info'):
                 if not(self._attributes_equal(other,m)):
                     return False
         return True
@@ -337,8 +337,8 @@ class Run(object):
         newrun.values = deepcopy(self.values[binpos])
         newrun.errors = deepcopy(self.errors[binpos])
         newrun.edges = [deepcopy(self.edges[1])]
-        newrun.meta = deepcopy(self.meta)
-        newrun.meta['obs'] += f' [{line}]'
+        newrun.info = deepcopy(self.info)
+        newrun.info['obs'] += f' [{line}]'
         return newrun
 
 
@@ -379,8 +379,8 @@ class Run(object):
         if hasattr(self,'xsec'):
             run.xsec = deepcopy(self.xsec)
         for attr in 'experiment'.split():
-            if attr in self.meta:
-                run.update_meta(**{attr:self.meta.get(attr)})
+            if attr in self.info:
+                run.update_meta(**{attr:self.info.get(attr)})
         return run
 
 
@@ -403,7 +403,7 @@ class Run(object):
             if hasattr(self,attr):
                 res[attr] = getattr(self,attr)
 
-        res['meta'] = self.meta
+        res['info'] = self.info
         return res
 
 
@@ -474,4 +474,4 @@ class Run(object):
 
     # TODO: nice printout
     def __repr__(self):
-        return self.meta.get('name')
+        return self.info.get('name')

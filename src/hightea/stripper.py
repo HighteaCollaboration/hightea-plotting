@@ -6,7 +6,7 @@ from .run import Run
 
 def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
     run = Run()
-    meta = {}
+    info = {}
 
     # Get file name
     if isinstance(file, str):
@@ -14,7 +14,7 @@ def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
     else:
         fileid = file
         file = mt.files[fileid][0]
-    meta['file'] = file
+    info['file'] = file
 
     # Get observable
     obs = kwargs.get('obs',0)
@@ -51,11 +51,11 @@ def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
     run.errors = e[:,setupids]
     run.xsec = np.transpose(mt.extractXSections(fileid)[setupids,:,0])
 
-    meta['obs'] = obs
-    meta['histid'] = histid
-    meta['smearing'] = mt.histogramSmearing(hist)
-    meta['nevents'] = int(mt.files[fileid][1].find('nevents').text)
-    run.update_meta(**meta)
+    info['obs'] = obs
+    info['histid'] = histid
+    info['smearing'] = mt.histogramSmearing(hist)
+    info['nevents'] = int(mt.files[fileid][1].find('nevents').text)
+    run.update_info(**info)
     run.name = file
 
     run.make_differential()
