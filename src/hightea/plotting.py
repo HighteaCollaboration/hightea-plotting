@@ -25,7 +25,7 @@ def _convert_args_to_Runs(plotfunc):
                 for o in obj:
                     _convert_to_runs(runs, o)
             else:
-                if isinstance(obj,str):
+                if isinstance(obj,str) or isinstance(obj,dict):
                     runs.append(Run(obj))
                 else:
                     runs.append(obj)
