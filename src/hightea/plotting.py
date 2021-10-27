@@ -8,9 +8,9 @@ from .run import Run
 #  Matplotlib parameters  #
 ###########################
 plt.rcParams['axes.xmargin'] = 0
-colorscheme = ['tab:blue', 'tab:purple', 'tab:green',
-               'tab:red', 'tab:cyan', 'tab:orange',
-               'tab:pink', 'tab:olive', 'tab:brown']
+colorscheme = ['tab:blue', 'tab:green', 'tab:red',
+               'tab:pink', 'tab:purple', 'tab:cyan',
+               'tab:orange', 'tab:olive', 'tab:brown']
 
 def _select_keys(d, *args):
     return {k:d[k] for k in d.keys() if k in args}
@@ -70,10 +70,13 @@ def plot(*runs, **kwargs):
         plot_unrolled(ax2, *ratio_runs, **kwargs, legend=False)
         ylim = ax2.get_ylim()
         ax2.set_ylim(max(ylim[0], -10), min(ylim[1], 10))
+        ax2.set_ylabel('Ratio')
         plt.tight_layout()
 
     if (binning):
-        plt.xlabel(binning[0].get('variable'))
+        obslabel = binning[0].get('variable')
+        plt.xlabel(obslabel)
+        ax1.set_ylabel(f'dσ / d({obslabel}) [pb/X]')
 
     if (_output):
         ext = _output.split('.')[-1]
