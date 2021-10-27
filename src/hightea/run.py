@@ -20,7 +20,6 @@ class Run(object):
     errors: stored similarly to values
     meta:   other information related to the run
     """
-    # TODO: consider using setters and getters instead of accessing objects directly
 
     def __init__(self, file=None, bins=None, edges=None, nsetups=1, **kwargs):
         """Initialise either by filename and kwargs, or by specifying bins or edges"""
@@ -29,39 +28,12 @@ class Run(object):
         else:
             if (bins):
                 self.bins = bins
-                self.edges = Run.convert_to_edges(self.bins)
                 self.values = np.zeros((len(bins),nsetups))
                 self.errors = np.zeros((len(bins),nsetups))
             elif (edges):
                 self.edges = edges
-                self.bins = Run.convert_to_bins(self.edges)
                 self.values = np.zeros((len(bins),nsetups))
                 self.errors = np.zeros((len(bins),nsetups))
-
-    @property
-    def meta(self):
-        if hasattr(self,'_meta'):
-            return self._meta
-        else:
-            self._meta = {}
-            return self._meta
-
-    @meta.setter
-    def meta(self,meta):
-        self._meta = meta
-
-    @property
-    def name(self):
-        res = self.meta.get('name')
-        if (res == None):
-            res = self.meta.get('file')
-        return res
-
-    @name.setter
-    def name(self, value, latex=False):
-        if (latex):
-            value = re.sub('_', '\\_', value)
-        self.meta['name'] = value
 
     def v(self):
         """Get values at central scale"""
@@ -95,27 +67,51 @@ class Run(object):
         """Update run meta information"""
         self.meta.update(info)
 
-    # TODO: debug and use set/getters below
-    # @property
-    # def bins(self):
-    #     return self._bins
-    #
-    # @bins.setter
-    # def bins(self, bins):
-    #     self._bins = bins
-    #     self._edges = Run.convert_to_edges(self._bins)
-    #
-    # @property
-    # def edges(self):
-    #     return self._edges
-    #
-    # @edges.setter
-    # def edges(self, edges):
-    #     self._edges = edges
-    #     self._bins = Run.convert_to_bins(self._edges)
+    @property
+    def meta(self):
+        if hasattr(self,'_meta'):
+            return self._meta
+        else:
+            self._meta = {}
+            return self._meta
 
+    @meta.setter
+    def meta(self,meta):
+        self._meta = meta
 
-    # TODO: loading from HEPDATA file
+    @property
+    def name(self):
+        res = self.meta.get('name')
+        if (res == None):
+            res = self.meta.get('file')
+        return res
+
+    @name.setter
+    def name(self, value, latex=False):
+        if (latex):
+            value = re.sub('_', '\\_', value)
+        self.meta['name'] = value
+
+    @property
+    def bins(self):
+        return self._bins
+
+    @bins.setter
+    def bins(self, v):
+        """Sets bins and automatically calculates corresponding edges"""
+        self._bins = v
+        self._edges = Run.convert_to_edges(v)
+
+    @property
+    def edges(self):
+        return self._edges
+
+    @edges.setter
+    def edges(self, edges):
+        """Sets edges and automatically calculates corresponding bins"""
+        self._edges = edges
+        self._bins = Run.convert_to_bins(self._edges)
+
     def loading_methods(load):
         @wraps(load)
         def inner(self,request,**kwargs):
@@ -165,23 +161,25 @@ class Run(object):
 
         mean = request.get('mean',[])
         std = request.get('std',[])
-        self.values = []
-        self.errors = []
-        self.bins = []
+        values = []
+        errors = []
+        bins = []
 
         for m in mean:
-            self.bins.append(m[0])
-            self.values.append(m[1])
+            bins.append(m[0])
+            values.append(m[1])
 
         for s in std:
-            self.errors.append(s[1])
+            errors.append(s[1])
 
-        self.values = np.array(self.values)
-        self.errors = np.array(self.errors)
-        self.edges = self.convert_to_edges(self.bins)
+        self.bins = bins
+        self.values = np.array(values)
+        self.errors = np.array(errors)
 
-        # if 'xsec' in request:
-        #     self.xsec = np.array(request.get('xsec'))
+        # TODO: test
+        if 'xsec' in request:
+            self.xsec = np.array(request.get('xsec'))
+
         if 'meta' in request:
             self.meta.update(request.get('meta'))
 
@@ -242,7 +240,6 @@ class Run(object):
         return self
 
 
-    # TODO: test addition tests
     def __add__(self,other):
         """Adding method"""
         res = self.minicopy()
@@ -257,7 +254,9 @@ class Run(object):
         return res
 
 
-    # TODO: test multiplication examples
+    __rmul__ = __mul__
+
+
     def __mul__(self,other):
         """Multiplication method"""
         res = self.minicopy()
@@ -268,7 +267,7 @@ class Run(object):
             res.errors = res.errors*other.values + \
                          res.values*other.errors
 
-        elif (isinstance(other,float)):
+        elif isinstance(other,float) or isinstance(other,int):
             res.values *= other
             res.errors *= other
         else:
@@ -276,7 +275,6 @@ class Run(object):
         return res
 
 
-    # TODO: test division examples
     def __truediv__(self,other):
         """Run division method. Supports division by a constant."""
         res = self.minicopy()
@@ -288,7 +286,7 @@ class Run(object):
             res.errors = res.errors/other.values + \
                   res.values*other.errors/other.values**2
 
-        elif (isinstance(other,float)):
+        elif isinstance(other,float) or isinstance(other,int):
             res.values /= other
             res.errors /= other
         else:
@@ -315,7 +313,6 @@ class Run(object):
         newrun.values = deepcopy(self.values[binpos])
         newrun.errors = deepcopy(self.errors[binpos])
         newrun.edges = [deepcopy(self.edges[1])]
-        newrun.bins = self.convert_to_bins(newrun.edges)
         newrun.meta = deepcopy(self.meta)
         newrun.meta['obs'] += f' [{line}]'
         return newrun
@@ -353,7 +350,6 @@ class Run(object):
         """Minimal copy: only data"""
         run = Run()
         run.bins = deepcopy(self.bins)
-        run.edges = Run.convert_to_edges(run.bins)
         run.values = deepcopy(self.values)
         run.errors = deepcopy(self.errors)
         if hasattr(self,'xsec'):
@@ -372,7 +368,6 @@ class Run(object):
     def flatten(self):
         """Remove dimensions represented by single bins"""
         self.edges = [x for x in self.edges if (len(x) > 2)]
-        self.bins = Run.convert_to_bins(self.edges)
 
 
     def to_htdict(self):
@@ -429,21 +424,20 @@ class Run(object):
             return binsList
 
     # # TODO: test
-    # @staticmethod
-    # def full(dims, fill_value=0, scales=1):
-    #     """Get run with filled const values"""
-    #     run = Run()
-    #     run.edges = [np.array(range(d+1)) for d in dims if d > 0]
-    #     run.bins = Run.convert_to_bins(run.edges)
-    #     run.values = np.full(len(run.bins),scales)
-    #     run.errors = np.random.rand(len(run.bins),scales) / 10
+    @staticmethod
+    def full(dims, scales=1, fill_value=0):
+        """Get run with filled const values"""
+        run = Run()
+        run.edges = [np.array(range(d+1)) for d in dims if d > 0]
+        run.values = np.full((len(run.bins),scales),float(fill_value))
+        run.errors = np.full((len(run.bins),scales),0.)
+        return run
 
     @staticmethod
     def random(dims, scales=1):
         """Get random multi-dimensional run for testing purposes"""
         run = Run()
         run.edges = [np.array(range(d+1)) for d in dims if d > 0]
-        run.bins = Run.convert_to_bins(run.edges)
         run.values = np.random.rand(len(run.bins),scales)
         run.errors = np.random.rand(len(run.bins),scales) / 10
         return run

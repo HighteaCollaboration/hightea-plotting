@@ -41,7 +41,6 @@ def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
     hist = mt.extractHistograms(fileid, obs)[histid]
     edgesList = mt.histogramBins(hist)
     run.edges = edgesList
-    run.bins = Run.convert_to_bins(edgesList)
     v = mt.histogramValues(hist, withOUF=withOUF)
     nsetups = v.shape[-1]
     v = v.reshape((len(run.bins),nsetups))

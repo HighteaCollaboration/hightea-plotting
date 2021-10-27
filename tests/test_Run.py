@@ -110,3 +110,19 @@ def test_eq():
     # TODO revise this test
     assert(new == run)
 
+def test_add():
+    run = Run.random((2,3),scales=3)
+    zeros = Run.full((2,3),scales=3)
+    new = zeros + run
+    assert(new == run)
+
+def test_muldiv():
+    old = Run.random((2,3),scales=3)
+    new = deepcopy(old)
+    run = Run.random((2,3),scales=3)
+    new *= run*.3
+    new *= .3*run
+    new /= .01*run
+    new /= 9*run
+    assert(np.isclose(new.values,old.values).all())
+
