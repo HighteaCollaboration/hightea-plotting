@@ -34,6 +34,7 @@ class Run(object):
                 self.edges = edges
                 self.values = np.zeros((len(bins),nsetups))
                 self.errors = np.zeros((len(bins),nsetups))
+            self.meta = {}
 
     def v(self):
         """Get values at central scale"""
