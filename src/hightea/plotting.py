@@ -15,6 +15,17 @@ colorscheme = ['tab:blue', 'tab:green', 'tab:red',
 def _select_keys(d, *args):
     return {k:d[k] for k in d.keys() if k in args}
 
+def _get_info(runs, *args):
+    """Scroll through runs to get relevant info to show on plots"""
+    res = {}
+    for a in args:
+        i = 0
+        while not(a in res) and i < len(runs):
+            if a in runs[i].info:
+                res[a] = runs[i].info.get(a)
+            i += 1
+    return res
+
 def _convert_args_to_Runs(plotfunc):
     """Convert JSON files and dicts to Run class"""
     @wraps(plotfunc)
@@ -46,10 +57,10 @@ def plot(*runs, **kwargs):
     _ratio = kwargs.get('ratio', None)
     _logscale = kwargs.get('logscale', None)
     _showRatio = not(_ratio == None)
-    # TODO: scroll through all runs to get information
-    # TODO: add info on top aobut process, scales, PDFs
-    obs = runs[0].info.get('obs','')
-    binning = runs[0].info.get('binning',[])
+    _info = _get_info(runs, *'obs binning'.split())
+
+    obs = _info.get('obs','')
+    binning = _info.get('binning',[])
 
     if (_logscale == None):
         for k in 'transverse energy mass'.split():
@@ -81,6 +92,8 @@ def plot(*runs, **kwargs):
         plt.xlabel(obslabel)
         # TODO: put labels on top of the picture for higher-dim plots
         ax1.set_ylabel(f'dσ / d({obslabel}) [pb/X]')
+
+    # TODO: add info on top about process, scales, PDFs
 
     if (_output):
         ext = _output.split('.')[-1]
