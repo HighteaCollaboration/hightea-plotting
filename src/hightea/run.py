@@ -78,7 +78,7 @@ class Run(object):
 
     @info.setter
     def info(self,info):
-        self._meta = info
+        self._info = info
 
     @property
     def name(self):
@@ -139,9 +139,11 @@ class Run(object):
                         vals[:,1] += vals[:,0]
                         vals[:,2] += vals[:,0]
                     elif (len(df.columns) == 8):
-                        syserrs = df.iloc[:,7:9].values
+                        syserrs = df.iloc[:,6:8].values
                         vals[:,1] = np.sqrt(vals[:,1]**2 + syserrs[:,0]**2)
-                        vals[:,2] = np.sqrt(vals[:,2]**2 + syserrs[:,1]**2)
+                        vals[:,2] = -np.sqrt(vals[:,2]**2 + syserrs[:,1]**2)
+                        vals[:,1] += vals[:,0]
+                        vals[:,2] += vals[:,0]
                     else:
                         raise Exception('Supported cases: 6 or 8 columns.')
 
@@ -385,7 +387,7 @@ class Run(object):
             run.xsec = deepcopy(self.xsec)
         for attr in 'experiment'.split():
             if attr in self.info:
-                run.update_meta(**{attr:self.info.get(attr)})
+                run.update_info(**{attr:self.info.get(attr)})
         return run
 
 
