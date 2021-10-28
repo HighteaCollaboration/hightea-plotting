@@ -150,7 +150,7 @@ class Run(object):
                     errs = np.zeros(vals.shape)
                     data = {'mean': [[b,v] for b,v in zip(bins,vals)],\
                             'std':  [[b,e] for b,e in zip(bins,errs)],\
-                            'info': {'differential': True}}
+                            'info': {'differential': True, 'experiment': True}}
 
                     data['file'] = request
                     load(self,data,**kwargs)
