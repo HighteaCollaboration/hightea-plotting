@@ -19,10 +19,6 @@ class MeasurementTools:
             for f in self.files:
                 print(f[0])
 
-    def getFileId(self,filename):
-        """return fileID if filename was loaded"""
-        return self.files.index(filename)
-
     def loadxml(self,filename,verbose=False):
         """
         takes a filename in form of a string and saves the XMLroot in 'files'.

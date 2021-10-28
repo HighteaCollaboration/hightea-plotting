@@ -9,11 +9,8 @@ def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
     info = {}
 
     # Get file name
-    if isinstance(file, str):
-        fileid = mt.getFileId(self,filename)
-    else:
-        fileid = file
-        file = mt.files[fileid][0]
+    fileid = file
+    file = mt.files[fileid][0]
     info['file'] = file
 
     # Get observable
