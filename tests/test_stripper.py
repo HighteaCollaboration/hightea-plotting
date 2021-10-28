@@ -1,3 +1,4 @@
+import pytest
 from math import isclose
 import numpy as np
 import src.hightea.plotting as hyt
@@ -38,4 +39,18 @@ def test_xsec():
     """Xsection list and list of scales should have matching length"""
     run = load_to_Run('tests/input/test.xml')
     assert(run.xsec.shape[1] == run.values.shape[1])
+
+def test_loadObservables():
+    """Load observable by name"""
+    filename = 'tests/input/test.xml'
+    mt = MeasurementTools()
+    mt.loadxml(filename)
+    expected = mt.extractObservables(0)[0]
+    run = load_to_Run(filename, obs='total cross section')
+    assert(run.info.get('obs') == expected)
+    with pytest.warns(UserWarning):
+        run = load_to_Run(filename, obs='transverse momentum')
+        assert(not(run.info.get('obs') == expected))
+    with pytest.raises(Exception):
+        run = load_to_Run(filename, obs='#@!')
 

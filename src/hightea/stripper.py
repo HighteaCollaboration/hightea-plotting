@@ -1,6 +1,7 @@
 import pathlib
 import numpy as np
 import itertools
+import warnings
 from ._MeasurementTools import MeasurementTools
 from .run import Run
 
@@ -15,10 +16,16 @@ def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
 
     # Get observable
     obs = kwargs.get('obs',0)
+    obslist = mt.extractObservables(fileid)
     if isinstance(obs, str):
-        pass
+        matchlist = [o for o in obslist if obs in o]
+        if (matchlist):
+            obs = matchlist[0]
+            if len(matchlist) > 1:
+                warnings.warn(f'several observables match, using:\n"{obs}"')
+        else:
+            raise Exception(f'No observables match "{obs}"')
     else:
-        obslist = mt.extractObservables(fileid)
         obs = obslist[obs]
     histid = kwargs.get('hist',0)
 
