@@ -13,7 +13,7 @@ def test_loading_xml_1d():
     assert(run.bins[0] == [[-0.5,0.5]])
     assert(len(run.edges) == 1)
     assert(len(run.bins[0]) == 1)
-    assert(isinstance(run.edges[0], np.ndarray))
+    assert(isinstance(run.edges[0], list))
     newrun = load_to_Run('tests/input/test.xml')
     assert(newrun.bins[0] == [[-0.5,0.5]])
 
@@ -26,7 +26,7 @@ def test_loading_xml_2d():
     assert(len(run.edges) == 2)
     assert(len(run.bins[0]) == 2)
     assert(len(run.values.shape) == 2)
-    assert(isinstance(run.edges[0], np.ndarray))
+    assert(isinstance(run.edges[0], list))
 
 
 def test_plot_xml_1d():
