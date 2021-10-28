@@ -132,10 +132,6 @@ class Run(object):
                     """File format as provided by HEPDATA"""
                     df = pd.read_csv(request,comment='#')
 
-                    if not(len(df.columns) == 6):
-                        # TODO: generalise
-                        raise Exception('Expecting 6 columns, other cases not implemented yet')
-
                     edges = [[df.iat[0,1]] + list(df.iloc[:,2])]
                     bins = Run.convert_to_bins(edges)
                     vals = df.iloc[:,3:6].values
