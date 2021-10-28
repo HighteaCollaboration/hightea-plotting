@@ -139,8 +139,16 @@ class Run(object):
                     edges = [[df.iat[0,1]] + list(df.iloc[:,2])]
                     bins = Run.convert_to_bins(edges)
                     vals = df.iloc[:,3:6].values
-                    vals[:,1] += vals[:,0]
-                    vals[:,2] += vals[:,0]
+                    if (len(df.columns) == 6):
+                        vals[:,1] += vals[:,0]
+                        vals[:,2] += vals[:,0]
+                    elif (len(df.columns) == 8):
+                        syserrs = df.iloc[:,7:9].values
+                        vals[:,1] = np.sqrt(vals[:,1]**2 + syserrs[:,0]**2)
+                        vals[:,2] = np.sqrt(vals[:,2]**2 + syserrs[:,1]**2)
+                    else:
+                        raise Exception('Supported cases: 6 or 8 columns.')
+
                     errs = np.zeros(vals.shape)
                     data = {'mean': [[b,v] for b,v in zip(bins,vals)],\
                             'std':  [[b,e] for b,e in zip(bins,errs)],\
@@ -338,7 +346,8 @@ class Run(object):
         newrun.errors = deepcopy(self.errors[binpos])
         newrun.edges = [deepcopy(self.edges[1])]
         newrun.info = deepcopy(self.info)
-        newrun.info['obs'] += f' [{line}]'
+        if ('obs') in newrun.info:
+            newrun.info['obs'] += f' [{line}]'
         return newrun
 
 
