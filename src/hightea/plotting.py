@@ -46,6 +46,8 @@ def plot(*runs, **kwargs):
     _ratio = kwargs.get('ratio', None)
     _logscale = kwargs.get('logscale', None)
     _showRatio = not(_ratio == None)
+    # TODO: scroll through all runs to get information
+    # TODO: add info on top aobut process, scales, PDFs
     obs = runs[0].info.get('obs','')
     binning = runs[0].info.get('binning',[])
 
@@ -64,6 +66,7 @@ def plot(*runs, **kwargs):
 
     if (_showRatio):
         ax2 = fig.add_subplot(3, 1, 3, sharex = ax1)
+        ax1.get_xaxis().set_visible(False)
         ratio_runs = []
         for i,r in enumerate(runs):
             ratio_runs.append(runs[i] / runs[_ratio][0])
@@ -76,6 +79,7 @@ def plot(*runs, **kwargs):
     if (binning):
         obslabel = binning[0].get('variable')
         plt.xlabel(obslabel)
+        # TODO: put labels on top of the picture for higher-dim plots
         ax1.set_ylabel(f'dσ / d({obslabel}) [pb/X]')
 
     if (_output):
