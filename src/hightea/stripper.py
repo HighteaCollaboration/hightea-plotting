@@ -6,6 +6,10 @@ from ._MeasurementTools import MeasurementTools
 from .run import Run
 
 def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
+    _verbose = kwargs.get('verbose',0)
+    _obs = kwargs.get('obs',0)
+    _histid = kwargs.get('hist',0)
+
     run = Run()
     info = {}
 
@@ -15,19 +19,22 @@ def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
     info['file'] = file
 
     # Get observable
-    obs = kwargs.get('obs',0)
     obslist = mt.extractObservables(fileid)
-    if isinstance(obs, str):
-        matchlist = [o for o in obslist if obs in o]
+    if (_verbose):
+        print('Observables list: ')
+        for i,o in enumerate(obslist):
+            print(i,o)
+
+    if isinstance(_obs, str):
+        matchlist = [o for o in obslist if _obs in o]
         if (matchlist):
-            obs = matchlist[0]
+            _obs = matchlist[0]
             if len(matchlist) > 1:
-                warnings.warn(f'several observables match, using:\n"{obs}"')
+                warnings.warn(f'several observables match, using:\n"{_obs}"')
         else:
-            raise Exception(f'No observables match "{obs}"')
+            raise Exception(f'No observables match "{_obs}"')
     else:
-        obs = obslist[obs]
-    histid = kwargs.get('hist',0)
+        _obs = obslist[_obs]
 
     # Get variations
     available_setups = mt.extractSetups(fileid)
@@ -35,14 +42,13 @@ def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
     setupid = setupids[0]
 
     # Other options
-    verbose = kwargs.get('verbose',0)
     withOUF = kwargs.get('withOUF',False)
 
-    if (verbose):
-        print(f'converting {file} for "{obs}" (#{histid})')
+    if (_verbose):
+        print(f'Loading {file} for:\n"{_obs}" (#{_histid})')
 
     # Extract basic histogram information
-    hist = mt.extractHistograms(fileid, obs)[histid]
+    hist = mt.extractHistograms(fileid, _obs)[_histid]
     edgesList = mt.histogramBins(hist)
     run.edges = edgesList
     v = mt.histogramValues(hist, withOUF=withOUF)
@@ -55,8 +61,8 @@ def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
     run.errors = e[:,setupids]
     run.xsec = np.transpose(mt.extractXSections(fileid)[setupids,:,0])
 
-    info['obs'] = obs
-    info['histid'] = histid
+    info['obs'] = _obs
+    info['histid'] = _histid
     info['smearing'] = mt.histogramSmearing(hist)
     info['nevents'] = int(mt.files[fileid][1].find('nevents').text)
     run.update_info(**info)
