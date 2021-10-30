@@ -113,6 +113,11 @@ class Run(object):
         self._edges = edges
         self._bins = Run.convert_to_bins(self._edges)
 
+    @property
+    def shape(self):
+        """Get dimensions for bins across all dimensions"""
+        return [len(edges) - 1 for edges in self.edges]
+
     def loading_methods(load):
         @wraps(load)
         def inner(self,request,**kwargs):

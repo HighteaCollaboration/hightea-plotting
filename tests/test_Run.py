@@ -75,7 +75,9 @@ def test_slicing_scale():
     assert((run[0].nsetups()) == 1)
 
 def test_random():
-    run = Run.random((2,3,1),3)
+    shape = [2,3,1]
+    run = Run.random(shape,3)
+    assert(run.shape == shape)
     expected = [np.array([0,1,2]), np.array([0,1,2,3]), np.array([0,1])]
     for r,e in zip(run.edges, expected):
         assert((r == e).all())
