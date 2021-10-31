@@ -88,7 +88,8 @@ class MeasurementTools:
             selectob.append(ob)
         return selectob
 
-    def histogramBins(self,hist):
+    @staticmethod
+    def histogramEdges(hist):
         """
         takes as an argument a histogram in the format provided by
         extractHistograms() and returns the bin edges in the format:
@@ -99,12 +100,13 @@ class MeasurementTools:
         """
         hs = hist.find('histogram')
         edges = hs.findall('edges')
-        bins = []
+        edgesList = []
         for edge in edges :
-          bins.append(list(map(float,edge.text.split(','))))
-        return bins
+          edgesList.append(list(map(float,edge.text.split(','))))
+        return edgesList
 
-    def histogramSmearing(self,hist):
+    @staticmethod
+    def histogramSmearing(hist):
         """
         takes as an argument a histogram in the format provided by
         extractHistograms() and returns the smearing parameter:
@@ -113,7 +115,8 @@ class MeasurementTools:
         hs = hist.find('histogram')
         return float(hs.find('smearing').text)
 
-    def histogramBinWidths(self,hist):
+    @staticmethod
+    def histogramBinWidths(hist):
         """
         takes as an argument a histogram in the format provided by
         extractHistograms() and returns the bin widths in the format:
@@ -122,12 +125,12 @@ class MeasurementTools:
           ...                                     ]
         as numpy array
         """
-        bins = self.histogramBins(hist)
+        edges = MeasurementTools.histogramEdges(hist)
         binwidths = []
-        for jt in range(0,len(bins)) :
+        for jt in range(0,len(edges)) :
           curbinwidths = []
-          for it in range(0,len(bins[jt])-1) :
-            curbinwidths.append(bins[jt,it+1]-bins[jt,it])
+          for it in range(0,len(edges[jt])-1) :
+            curbinwidths.append(edges[jt,it+1]-edges[jt,it])
           binwidths.append(curbinwidths)
         return np.array(binwidths)
 
@@ -145,7 +148,7 @@ class MeasurementTools:
         """
         hs = hist.find('histogram')
         bins = hs.findall('bin')
-        edges = self.histogramBins(hist) # to get the dimensions
+        edges = self.histogramEdges(hist) # to get the dimensions
         hdim = len(edges)
         vals = []
         for b in bins:
@@ -180,7 +183,7 @@ class MeasurementTools:
         """
         hs = hist.find('histogram')
         bins = hs.findall('bin')
-        edges = self.histogramBins(hist) # to get the dimensions
+        edges = self.histogramEdges(hist) # to get the dimensions
         hdim = len(edges)
         vals = []
         for b in bins:
@@ -211,7 +214,7 @@ class MeasurementTools:
         """
         hs = hist.find('histogram')
         bins = hs.findall('bin')
-        edges = self.histogramBins(hist) # to get the dimensions
+        edges = self.histogramEdges(hist) # to get the dimensions
         hdim = len(edges)
         vals = []
         for b in bins:

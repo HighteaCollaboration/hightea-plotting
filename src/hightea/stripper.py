@@ -2,13 +2,24 @@ import pathlib
 import numpy as np
 import itertools
 import warnings
-from ._MeasurementTools import MeasurementTools
+from ._MeasurementTools import MeasurementTools as MT
 from .run import Run
 
-def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
+
+def _list_histogram_setups(histograms):
+    for i,hist in enumerate(histograms):
+        edgesList = MT.histogramEdges(hist)
+        smearing = MT.histogramSmearing(hist)
+        dims = '*'.join([str(len(edges)-1) for edges in edgesList])
+        binning = ' * '.join([f'({edges[0]}...{edges[-1]})'
+                            for edges in edgesList])
+        print(f'#{i}: [{dims}, smear={smearing:.1f}] : {binning}')
+
+
+def convert_to_Run(mt: MT, file=0, **kwargs):
     _verbose = kwargs.get('verbose',0)
     _obs = kwargs.get('obs',0)
-    _histid = kwargs.get('hist',0)
+    _hist = kwargs.get('hist',0)
 
     run = Run()
     info = {}
@@ -44,12 +55,15 @@ def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
     # Other options
     withOUF = kwargs.get('withOUF',False)
 
-    if (_verbose):
-        print(f'Loading {file} for:\n"{_obs}" (#{_histid})')
-
     # Extract basic histogram information
-    hist = mt.extractHistograms(fileid, _obs)[_histid]
-    edgesList = mt.histogramBins(hist)
+    histograms = mt.extractHistograms(fileid, _obs)
+
+    if (_verbose):
+        print(f'Loading {file} for:\n"{_obs}" (#{_hist})')
+        _list_histogram_setups(histograms)
+
+    hist = histograms[_hist]
+    edgesList = mt.histogramEdges(hist)
     run.edges = edgesList
     v = mt.histogramValues(hist, withOUF=withOUF)
     nsetups = v.shape[-1]
@@ -62,7 +76,7 @@ def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
     run.xsec = np.transpose(mt.extractXSections(fileid)[setupids,:,0])
 
     info['obs'] = _obs
-    info['histid'] = _histid
+    info['hist'] = _hist
     info['smearing'] = mt.histogramSmearing(hist)
     info['nevents'] = int(mt.files[fileid][1].find('nevents').text)
     run.update_info(**info)
@@ -73,8 +87,9 @@ def convert_to_Run(mt: MeasurementTools, file=0, **kwargs):
     return run
 
 
+
 def load_to_Run(xmlfile, **kwargs):
-    mt = MeasurementTools()
+    mt = MT()
     mt.loadxml(xmlfile)
     return convert_to_Run(mt, 0, **kwargs)
 
