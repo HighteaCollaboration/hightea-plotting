@@ -337,20 +337,32 @@ class Run(object):
         return True
 
 
-    # TODO: generalise
-    def get_1d_slice(self, line):
-        """Get a slice from 2D observable for 1D distribution"""
-        assert len(self.edges)==2, "get_1d_slice only works with 2D runs"
+    def zoom(self, value=None, line=None, dim=0):
+        """Zoom into one bin at one dimension to get a lower dim slice.
 
-        left,right = self.edges[0][line:line+2]
-        binpos = [i for i,x in enumerate(self.bins) if x[0]==[left,right]]
+        Specify the bin by some value that it contains or
+        directly by the line number.
+        """
+        if not(value == None):
+            line = 0
+            while (self.edges[dim][line+1] < value
+                   and line < self.dimensions()[dim]-1):
+                line += 1
+
+        left,right = self.edges[dim][line:line+2]
+        binpos = [i for i,x in enumerate(self.bins) if x[dim]==[left,right]]
         newrun = Run()
         newrun.values = deepcopy(self.values[binpos])
         newrun.errors = deepcopy(self.errors[binpos])
-        newrun.edges = [deepcopy(self.edges[1])]
+        edges = deepcopy(self.edges)
+        edges.pop(dim)
+        newrun.edges = edges
         newrun.info = deepcopy(self.info)
         if ('obs') in newrun.info:
-            newrun.info['obs'] += f' [{line}]'
+            if not(value == None):
+                newrun.info['obs'] += f' ({value})'
+            else:
+                newrun.info['obs'] += f' [line={line}]'
         return newrun
 
 
@@ -467,6 +479,16 @@ class Run(object):
         run.edges = [list(range(d+1)) for d in dims if d > 0]
         run.values = np.full((len(run.bins),scales),float(fill_value))
         run.errors = np.full((len(run.bins),scales),0.)
+        return run
+
+    @staticmethod
+    def seq(dims, scales=1):
+        """Get random multi-dimensional run for testing purposes"""
+        run = Run()
+        run.edges = [list(range(d+1)) for d in dims if d > 0]
+        run.values = np.arange(0,len(run.bins),1./scales)\
+                    .reshape(len(run.bins),scales)
+        run.errors = run.values / 10
         return run
 
     @staticmethod

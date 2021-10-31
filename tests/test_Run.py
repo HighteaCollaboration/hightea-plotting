@@ -84,6 +84,14 @@ def test_random():
     assert(run.values.shape == (len(run.bins),3))
     assert(run.errors.shape == (len(run.bins),3))
 
+def test_zoom():
+    run = Run.seq((2,3),2)
+    run.edges = [np.array([-5,-3,-1]), np.array(list(range(4)))]
+    run2 = run.zoom(-2)
+    assert((run2.values[:,0] == np.array([3,4,5])).all())
+    run2 = run.zoom(line=1)
+    assert((run2.values[:,0] == np.array([3,4,5])).all())
+
 #########################
 #  ratio and rescaling  #
 #########################
