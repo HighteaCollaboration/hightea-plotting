@@ -85,6 +85,7 @@ def test_random():
     assert(run.errors.shape == (len(run.bins),3))
 
 def test_zoom():
+    # TODO: update test for slices at other dimensions
     run = Run.seq((2,3),2)
     run.edges = [np.array([-5,-3,-1]), np.array(list(range(4)))]
     run2 = run.zoom(-2)
@@ -125,6 +126,7 @@ def test_add():
     zeros = Run.full((2,3),scales=3)
     new = zeros + run
     assert(new == run)
+    assert(2 - 2 + zeros + 1 - 1 == zeros)
 
 def test_muldiv():
     old = Run.random((2,3),scales=3)

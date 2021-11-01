@@ -266,13 +266,26 @@ class Run(object):
         res = self.minicopy()
         if (isinstance(other,Run)):
             assert(res.values.shape[0] == other.values.shape[0])
-
             res.values += other.values
             res.errors = np.sqrt(res.errors**2 + other.errors**2)
-
+        elif isinstance(other,float) or isinstance(other,int):
+            res.values += other
         else:
             raise Exception("Add operation failed")
         return res
+
+
+    __radd__ = __add__
+
+
+    def __sub__(self,other):
+        """Subtraction method"""
+        return self.__add__((-1.)*other)
+
+
+    def __rsub__(self,other):
+        """Subtraction method"""
+        return other + (-1.)*self
 
 
     def __mul__(self,other):
@@ -519,6 +532,10 @@ class Run(object):
         """Some specific operations to apply to run"""
         pass
 
+
     # TODO: nice printout
     def __repr__(self):
-        return self.info.get('name')
+        desc = ""
+        for m in self._get_attributes():
+            desc += f" '{m}': {getattr(self,m)}\n"
+        return desc
