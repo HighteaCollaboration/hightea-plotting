@@ -483,7 +483,10 @@ class Run(object):
 
     @staticmethod
     def seq(dims, scales=1):
-        """Get random multi-dimensional run for testing purposes"""
+        """Get a multi-dimensional run for testing purposes
+
+        Fills values with sequential values.
+        """
         run = Run()
         run.edges = [list(range(d+1)) for d in dims if d > 0]
         run.values = np.arange(0,len(run.bins),1./scales)\
