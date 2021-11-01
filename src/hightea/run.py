@@ -304,7 +304,7 @@ class Run(object):
             res.errors /= other
         else:
             raise Exception("Div operation failed")
-            np.seterr(**warnings)
+        np.seterr(**warnings)
         return res
 
 
