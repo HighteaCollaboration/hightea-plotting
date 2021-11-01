@@ -73,7 +73,11 @@ def plot(*runs, **kwargs):
     plot_unrolled(ax1, *runs, **kwargs)
 
     if (_logscale):
-        ax1.set_yscale('log')
+        if (isinstance(_logscale,str)):
+            ax1.set_xscale('log') if 'x' in _logscale else ...
+            ax1.set_yscale('log') if 'y' in _logscale else ...
+        else:
+            ax1.set_yscale('log')
 
     if (_showRatio):
         ax2 = fig.add_subplot(3, 1, 3, sharex = ax1)
