@@ -64,9 +64,17 @@ class Run(object):
         """Get number of setups in run"""
         return self.values.shape[1]
 
-    def update_info(self,**info):
-        """Update run information"""
-        self.info.update(info)
+    def update_info(self,info=None,**kwargs):
+        """Update run information
+
+        Optionally pass either Run or dict instance.
+        Optionally pass additional flags to modify on top of that.
+        """
+        if isinstance(info,Run):
+            self.info.update(info.info)
+        elif isinstance(info,dict):
+            self.info.update(info)
+        self.info.update(kwargs)
 
     @property
     def info(self):
@@ -213,9 +221,9 @@ class Run(object):
         return self.info.get('differential',False)
 
 
-    def make_histogramlike(self):
+    def make_histogramlike(self,ignorechecks=False):
         """Turn differential distribution to histogram"""
-        if not(self.is_differential()):
+        if not(self.is_differential()) and not(ignorechecks):
             raise Exception("Already is histogram-like")
         def area(bins):
             a = 1
@@ -290,6 +298,7 @@ class Run(object):
 
     def __truediv__(self,other):
         """Run division method. Supports division by a constant."""
+        # TODO: tackle is_differential flag consistently
         res = self.minicopy()
         warnings = np.geterr(); np.seterr(invalid='ignore')
         if (isinstance(other,Run)):
@@ -355,6 +364,7 @@ class Run(object):
         newrun.values = deepcopy(self.values[binpos])
         newrun.errors = deepcopy(self.errors[binpos])
         edges = deepcopy(self.edges)
+        assert(len(edges) > 1),"Zoom is intended for differential distributions with dim >= 2"
         edges.pop(dim)
         newrun.edges = edges
         newrun.info = deepcopy(self.info)
