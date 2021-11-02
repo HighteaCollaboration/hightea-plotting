@@ -56,6 +56,7 @@ def plot(*runs, **kwargs):
     _output = kwargs.get('output', None)
     _ratio = kwargs.get('ratio', None)
     _logscale = kwargs.get('logscale', None)
+    _lim = kwargs.get('lim', {})
     _showRatio = not(_ratio == None)
     _info = _get_info(runs, *'obs binning'.split())
 
@@ -89,6 +90,9 @@ def plot(*runs, **kwargs):
         ylim = ax2.get_ylim()
         ax2.set_ylim(max(ylim[0], -10), min(ylim[1], 10))
         ax2.set_ylabel('Ratio')
+        if (_lim):
+            if ('x2' in _lim): ax1.set_xlim(_lim.get('x2'))
+            if ('y2' in _lim): ax1.set_ylim(_lim.get('y2'))
         plt.tight_layout()
 
     if (binning):
@@ -96,6 +100,10 @@ def plot(*runs, **kwargs):
         plt.xlabel(obslabel)
         # TODO: put labels on top of the picture for higher-dim plots
         ax1.set_ylabel(f'dσ / d({obslabel}) [pb/X]')
+
+    if (_lim):
+        if ('x1' in _lim): ax1.set_xlim(_lim.get('x1'))
+        if ('y1' in _lim): ax1.set_ylim(_lim.get('y1'))
 
     # TODO: add info on top about process, scales, PDFs
 
@@ -121,6 +129,7 @@ def plot_unrolled(ax, *runs, **kwargs):
     _showGrid = kwargs.get('grid', True)
     _colorscheme = kwargs.get('colorscheme',colorscheme)
     _showLegend = kwargs.get('legend', True)
+    # TODO: add support for infinity or under/overflow bins
 
     for i,run in enumerate(runs):
         # if (run.dim() != 1):
