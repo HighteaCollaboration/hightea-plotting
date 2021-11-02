@@ -105,7 +105,13 @@ def plot(*runs, **kwargs):
         if ('x1' in _lim): ax1.set_xlim(_lim.get('x1'))
         if ('y1' in _lim): ax1.set_ylim(_lim.get('y1'))
 
-    # TODO: add info on top about process, scales, PDFs
+    # add run info on top of the plot
+    # TODO: make work well when moving plots
+    ax1.text(.02,.98, ', '.join([_info.get(x) for x in
+              'process variation'.split() if x in _info]),
+              bbox = dict(facecolor='white',alpha=.6,linewidth=.5),
+              verticalalignment = 'top',
+              transform=ax1.transAxes)
 
     if (_output):
         ext = _output.split('.')[-1]
