@@ -414,6 +414,14 @@ class Run(object):
         for a in 'values errors xsec'.split():
             if hasattr(run,a):
                 setattr(run,a,getattr(self,a)[:,sliced])
+
+        # sync variation information with actual data
+        if ('variation' in run.info):
+            try:
+                run.update_info(variation=self.info.get('variation')[sliced])
+            except Exception:
+                run.info.pop('variation')
+
         return run
 
 

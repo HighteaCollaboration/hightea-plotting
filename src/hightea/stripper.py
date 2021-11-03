@@ -2,6 +2,7 @@ import pathlib
 import numpy as np
 import itertools
 import warnings
+import re
 from ._MeasurementTools import MeasurementTools as MT
 from .run import Run
 
@@ -79,6 +80,9 @@ def convert_to_Run(mt: MT, file=0, **kwargs):
     info['hist'] = _hist
     info['smearing'] = mt.histogramSmearing(hist)
     info['nevents'] = int(mt.files[fileid][1].find('nevents').text)
+    info['variation'] = [','.join([x.strip()
+                        for x in re.split(',| = ',s[1])[1::2]+[s[0].split('with ')[-1]]])
+                        for s in available_setups]
     run.update_info(**info)
     run.name = file
 

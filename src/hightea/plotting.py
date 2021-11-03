@@ -58,7 +58,7 @@ def plot(*runs, **kwargs):
     _logscale = kwargs.get('logscale', None)
     _lim = kwargs.get('lim', {})
     _showRatio = not(_ratio == None)
-    _info = _get_info(runs, *'obs binning'.split())
+    _info = _get_info(runs, *'obs binning process variation'.split())
 
     obs = _info.get('obs','')
     binning = _info.get('binning',[])
@@ -105,13 +105,15 @@ def plot(*runs, **kwargs):
         if ('x1' in _lim): ax1.set_xlim(_lim.get('x1'))
         if ('y1' in _lim): ax1.set_ylim(_lim.get('y1'))
 
-    # add run info on top of the plot
-    # TODO: make work well when moving plots
-    ax1.text(.02,.98, ', '.join([_info.get(x) for x in
-              'process variation'.split() if x in _info]),
-              bbox = dict(facecolor='white',alpha=.6,linewidth=.5),
-              verticalalignment = 'top',
-              transform=ax1.transAxes)
+    headerinfo = []
+    headerinfo.append('Process: '+_info.get("process")) if "process" in _info else ...
+    headerinfo.append('Central setup: '+_info.get("variation",'')[0]) \
+                      if "variation" in _info else ...
+    if (headerinfo):
+        ax1.text(.02,.98, (5*' ').join(headerinfo),
+                  bbox = dict(facecolor='white',alpha=.6,linewidth=.5),
+                  verticalalignment = 'top',
+                  transform=ax1.transAxes)
 
     if (_output):
         ext = _output.split('.')[-1]
@@ -160,7 +162,7 @@ def plot_unrolled(ax, *runs, **kwargs):
         ax.grid(lw=0.2, c='gray')
 
     if (_showLegend):
-        ax.legend()
+        ax.legend(loc='upper right') # don't overlay setup info
 
 
 def _get_unrolled(edges):
