@@ -1,6 +1,7 @@
 import pathlib
 import json
 import re
+import warnings
 import numpy as np
 import pandas as pd
 from functools import wraps
@@ -416,11 +417,13 @@ class Run(object):
                 setattr(run,a,getattr(self,a)[:,sliced])
 
         # sync variation information with actual data
-        if ('variation' in run.info):
-            try:
-                run.update_info(variation=self.info.get('variation')[sliced])
-            except Exception:
-                run.info.pop('variation')
+        if ('variation' in self.info):
+            variation = deepcopy(self.info['variation'])
+            if (type(variation) == list and len(variation) == self.nsetups()):
+                run.update_info(variation=variation[sliced])
+            else:
+                del run.info['variation']
+                warnings.warn(f'info.variation dropped due to mismatch with data.')
 
         return run
 

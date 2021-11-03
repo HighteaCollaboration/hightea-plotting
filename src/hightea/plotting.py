@@ -58,6 +58,7 @@ def plot(*runs, **kwargs):
     _logscale = kwargs.get('logscale', None)
     _lim = kwargs.get('lim', {})
     _showRatio = not(_ratio == None)
+    _showSetup = kwargs.get('show_setup', None)
     _info = _get_info(runs, *'obs binning process variation'.split())
 
     obs = _info.get('obs','')
@@ -105,15 +106,16 @@ def plot(*runs, **kwargs):
         if ('x1' in _lim): ax1.set_xlim(_lim.get('x1'))
         if ('y1' in _lim): ax1.set_ylim(_lim.get('y1'))
 
-    headerinfo = []
-    headerinfo.append('Process: '+_info.get("process")) if "process" in _info else ...
-    headerinfo.append('Central setup: '+_info.get("variation",'')[0]) \
-                      if "variation" in _info else ...
-    if (headerinfo):
-        ax1.text(.02,.98, (5*' ').join(headerinfo),
-                  bbox = dict(facecolor='white',alpha=.6,linewidth=.5),
-                  verticalalignment = 'top',
-                  transform=ax1.transAxes)
+    if (_showSetup) or (len(runs) == 1 and (_showSetup == None)):
+        headerinfo = []
+        headerinfo.append('Process: '+_info.get("process")) if "process" in _info else ...
+        headerinfo.append('Central setup: '+_info.get("variation",'')[0]) \
+                          if len(_info.get('variation',[])) else ...
+        if (headerinfo):
+            ax1.text(.02,.98, (5*' ').join(headerinfo),
+                      bbox = dict(facecolor='white',alpha=.6,linewidth=.5),
+                      verticalalignment = 'top',
+                      transform=ax1.transAxes)
 
     if (_output):
         ext = _output.split('.')[-1]
