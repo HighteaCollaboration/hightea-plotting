@@ -12,7 +12,7 @@ class Run(object):
     Run encapsulates histogram data for an observable and its metadata
 
     bins:   stored as List(List(List(float)))
-            for example: [ [[0,1],[2,3]], [[1,2],[2,3] ] ]
+            for example: [ [[0,1],[2,3]], [[1,2],[2,3]] ]
                 represents 2d observable with edges [0,1,2], [2,3]
     edges:  stored as List(List(float))
     values: stored as array with (X,Y) dimensions,
@@ -168,6 +168,9 @@ class Run(object):
 
                     data['file'] = request
                     load(self,data,**kwargs)
+
+                else:
+                    raise Exception('Unexpected input format')
 
         return inner
 
@@ -469,6 +472,36 @@ class Run(object):
         """Dump run to JSON file in hightea format"""
         with open(file, 'w') as f:
             json.dump(self.to_htdict(), f)
+
+
+    def to_csv(self,file,**kwargs):
+        """Dump run to CSV file in HEPDATA format"""
+        df = pd.DataFrame()
+        if self.dim() == 1:
+            def centers(edges,logx):
+                if (logx):
+                    return [(l*r)**0.5 for l,r in zip(edges[:-1],edges[1:])]
+                else:
+                    return [(l+r)*.5 for l,r in zip(edges[:-1],edges[1:])]
+            df['BIN'] = centers(self.edges[0], kwargs.get('logx'))
+            df['BIN LOW'] = self.edges[0][:-1]
+            df['BIN HIGH'] = self.edges[0][1:]
+            df['VALUE [PB]'] = self.v()
+            df['ERROR+'] = self.e()
+            df['ERROR-'] = -self.e()
+            df['SYS+'] = self.upper() - self.v()
+            df['SYS-'] = self.lower() - self.v()
+        else:
+            raise Exception("Multi dimensional data dump to CSV not supported yet")
+
+        with open(file, 'w') as f:
+            if 'obs' in self.info: f.write(f'# Observable: {self.info["obs"]}\n')
+            if 'process' in self.info: f.write(f'# Process: {self.info["process"]}\n')
+            if self.info.get('variation',[]):
+                f.write('# Central setup: {}\n'\
+                        .format(self.info.get("variation",'')[0]))
+
+            df.to_csv(f, index=False, float_format="%.6e")
 
 
     @staticmethod
