@@ -1,6 +1,7 @@
 import numpy as np
 from functools import wraps
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 from .run import Run
 
 ###########################
@@ -138,32 +139,60 @@ def plot_unrolled(ax, *runs, **kwargs):
     _showGrid = kwargs.get('grid', True)
     _colorscheme = kwargs.get('colorscheme',colorscheme)
     _showLegend = kwargs.get('legend', True)
-    # TODO: add support for infinity or under/overflow bins
 
+    # plot each run separately
     for i,run in enumerate(runs):
-        # if (run.dim() != 1):
-        #     raise Exception('2D histograms not supported yet')
 
+        # separate treatment for experimental data and theoretical distributions
         if not(run.info.get('experiment',False)):
-            _plot_theory(ax,run,**_select_keys(kwargs,'linewidth','alpha'),
+            _plot_theory(ax,run.remove_OUF(),**kwargs,
                             color=_colorscheme[i],
                             label=f'run {i}' if run.name==None else run.name,
                             errshift=.03*(i-(len(runs)-1)/2))
+
         else:
-            _plot_experiment(ax,run,**_select_keys(kwargs,'linewidth','alpha'),
+            _plot_experiment(ax,run.remove_OUF(),**kwargs,
                             color=_colorscheme[i],
                             label=f'data {i}' if run.name==None else run.name)
 
-        if (i == 0 and run.dim() > 1):
-            for j in range(1,run.dimensions()[0]):
-                ax.axvline(run.edges[1][0] + j*(run.edges[1][-1] - run.edges[1][0]),
-                            ls=':', color='gray')
+        # put OUF bins on plot if they exist
+        if run.has_OUF() and run.dim() == 1:
+
+            def get_oufrun(run, i):
+                if (i < 0):
+                    dx = run.edges[0][i-1]-run.edges[0][i-2]
+                    lx = run.edges[0][i-1] + dx*0.2
+                    rx = run.edges[0][i-1] + dx*1.2
+                else:
+                    dx = run.edges[0][i+2]-run.edges[0][i+1]
+                    lx = run.edges[0][i+1] - dx*1.2
+                    rx = run.edges[0][i+1] - dx*0.2
+                oufrun = Run(bins=[[[lx,rx]]])
+                oufrun.values = np.array([list(run.values[i])*2])
+                oufrun.errors = np.array([list(run.errors[i])*2])
+                return oufrun
+
+            OUFkwargs = dict(**kwargs,label=None,color=_colorscheme[i],
+                             errshift=.03*(i-(len(runs)-1)/2))
+
+            if abs(run.edges[0][-1]) == float('inf'):
+                _plot_theory(ax,get_oufrun(run,-1),**OUFkwargs,marker='4')
+            if abs(run.edges[0][0]) == float('inf'):
+                _plot_theory(ax,get_oufrun(run,0),**OUFkwargs,marker='3')
+
+
+    # show dimension edges for multidimensional distributions
+    if (runs[0].dim() > 1):
+        for j in range(1,runs[0].dimensions()[0]):
+            ax.axvline(runs[0].edges[1][0] +
+                        j*(runs[0].edges[1][-1] - runs[0].edges[1][0]),
+                        ls=':', color='gray')
 
     if (_showGrid):
         ax.grid(lw=0.2, c='gray')
 
     if (_showLegend):
-        ax.legend(loc='upper right') # don't overlay setup info
+        ax.legend(loc=kwargs.get('legend_loc','upper right'))
 
 
 def _get_unrolled(edges):
@@ -191,11 +220,15 @@ def _plot_theory(ax,run,**kwargs):
     _showErrors = kwargs.get('showErrors', True)
     _linewidth = kwargs.get('linewidth', 2.5)
     _alpha = kwargs.get('alpha', .3)
+    _marker = kwargs.get('marker', '')
+    _ms = kwargs.get('ms', 20)
 
     ax.step(_edges,
             m(run.v()),
             where='post',
             color=_color,
+            marker=_marker,
+            ms=_ms,
             label=kwargs.get('label'),
             linewidth=_linewidth)
 

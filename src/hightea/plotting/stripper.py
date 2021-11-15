@@ -54,7 +54,7 @@ def convert_to_Run(mt: MT, file=0, **kwargs):
     setupid = setupids[0]
 
     # Other options
-    withOUF = kwargs.get('withOUF',False)
+    _withOUF = kwargs.get('withOUF',False)
 
     # Extract basic histogram information
     histograms = mt.extractHistograms(fileid, _obs)
@@ -65,12 +65,15 @@ def convert_to_Run(mt: MT, file=0, **kwargs):
 
     hist = histograms[_hist]
     edgesList = mt.histogramEdges(hist)
+    if (_withOUF):
+        for i in range(len(edgesList)):
+            edgesList[i] = [float('-inf')] + edgesList[i] + [float('inf')]
     run.edges = edgesList
-    v = mt.histogramValues(hist, withOUF=withOUF)
+    v = mt.histogramValues(hist, withOUF=_withOUF)
     nsetups = v.shape[-1]
     v = v.reshape((len(run.bins),nsetups))
-    e = mt.histogramErrors(hist, withOUF=withOUF).reshape((len(run.bins),nsetups))
-    p = mt.histogramHits(hist, withOUF=withOUF).reshape((len(run.bins)))
+    e = mt.histogramErrors(hist, withOUF=_withOUF).reshape((len(run.bins),nsetups))
+    p = mt.histogramHits(hist, withOUF=_withOUF).reshape((len(run.bins)))
 
     run.values = v[:,setupids]
     run.errors = e[:,setupids]
@@ -86,7 +89,8 @@ def convert_to_Run(mt: MT, file=0, **kwargs):
     run.update_info(**info)
     run.name = file
 
-    run.make_differential()
+    if not(_withOUF):
+        run.make_differential()
 
     return run
 

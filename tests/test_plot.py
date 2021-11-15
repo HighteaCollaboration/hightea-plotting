@@ -1,5 +1,5 @@
-import src.hightea.plotting as hyt
-from src.hightea.stripper import convert_to_Run, load_to_Run
+import src.hightea.plotting.plotting as hyt
+from src.hightea.plotting.stripper import convert_to_Run, load_to_Run
 
 def test_plot():
     hyt.plot('tests/input/simple1d.json', show=False)
