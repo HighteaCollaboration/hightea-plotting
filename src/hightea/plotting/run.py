@@ -68,11 +68,13 @@ class Run(object):
     def update_info(self,info=None,**kwargs):
         """Update run information
 
-        Optionally pass either Run or dict instance.
+        Optionally pass either Run, str, or dict instance.
         Optionally pass additional flags to modify on top of that.
         """
         if isinstance(info,Run):
             self.info.update(info.info)
+        elif isinstance(info,str):
+            self.name = info
         elif isinstance(info,dict):
             self.info.update(info)
         self.info.update(kwargs)
@@ -128,12 +130,13 @@ class Run(object):
         return [len(edges) - 1 for edges in self.edges]
 
     def loading_methods(load):
+        """Convenient loading methods to load data into Run class"""
         @wraps(load)
         def inner(self,request,**kwargs):
             if (isinstance(request,dict)):
                 load(self,request,**kwargs)
             elif (isinstance(request,str)):
-                ext = pathlib.Path(request).suffix
+                ext = '.'+kwargs.get('ext',pathlib.Path(request).suffix[1:])
 
                 if (ext) == '.json':
                     """File format as provided by hightea"""
@@ -142,26 +145,29 @@ class Run(object):
                     data['file'] = request
                     load(self,data,**kwargs)
 
-                if (ext) == '.csv':
+                elif (ext) == '.csv':
                     """File format as provided by HEPDATA"""
-                    df = pd.read_csv(request,comment='#')
+                    header = kwargs.get('header','infer')
+                    df = pd.read_csv(request,header=header,comment='#')
 
                     edges = [[df.iat[0,1]] + list(df.iloc[:,2])]
                     bins = Run.convert_to_bins(edges)
-                    vals = df.iloc[:,3:6].values
                     if (len(df.columns) == 6):
+                        vals = df.iloc[:,3:6].values
                         vals[:,1] += vals[:,0]
                         vals[:,2] += vals[:,0]
+                        errs = np.zeros(vals.shape)
                     elif (len(df.columns) == 8):
-                        syserrs = df.iloc[:,6:8].values
-                        vals[:,1] = np.sqrt(vals[:,1]**2 + syserrs[:,0]**2)
-                        vals[:,2] = -np.sqrt(vals[:,2]**2 + syserrs[:,1]**2)
+                        vals = df.iloc[:,[3,6,7]].values
                         vals[:,1] += vals[:,0]
                         vals[:,2] += vals[:,0]
+                        errs = np.zeros(vals.shape)
+                        errs[:,0] = (df.iloc[:,4].values - df.iloc[:,5].values)/2
+                        errs[:,1] = errs[:,0]
+                        errs[:,2] = errs[:,0]
                     else:
                         raise Exception('Supported cases: 6 or 8 columns.')
 
-                    errs = np.zeros(vals.shape)
                     data = {'mean': [[b,v] for b,v in zip(bins,vals)],\
                             'std':  [[b,e] for b,e in zip(bins,errs)],\
                             'info': {'differential': True, 'experiment': True}}
@@ -170,7 +176,7 @@ class Run(object):
                     load(self,data,**kwargs)
 
                 else:
-                    raise Exception('Unexpected input format')
+                    raise Exception(f'Unexpected input format: {ext}')
 
         return inner
 
@@ -228,7 +234,8 @@ class Run(object):
     def make_histogramlike(self,ignorechecks=False):
         """Turn differential distribution to histogram"""
         if not(self.is_differential()) and not(ignorechecks):
-            raise Exception("Already is histogram-like")
+            warnings.warn("Already is histogram-like")
+            return self
         def area(bins):
             a = 1
             for b in bins: a *= b[1]-b[0]
@@ -248,7 +255,8 @@ class Run(object):
     def make_differential(self):
         """Turn histograms into differential distributions"""
         if self.is_differential():
-            raise Exception("Already made differential")
+            warnings.warn("Already is differential")
+            return self
         def area(bins):
             a = 1
             for b in bins: a *= b[1]-b[0]
@@ -269,7 +277,9 @@ class Run(object):
         """Adding method"""
         res = self.minicopy()
         if (isinstance(other,Run)):
-            assert(res.values.shape[0] == other.values.shape[0])
+            len_self, len_other = res.values.shape[0], other.values.shape[0]
+            if not(len_self == len_other):
+                raise Exception(f"Incompatible run shapes: {len_self}, {len_other}")
             res.values += other.values
             res.errors = np.sqrt(res.errors**2 + other.errors**2)
         elif isinstance(other,float) or isinstance(other,int):
@@ -319,15 +329,17 @@ class Run(object):
         res = self.minicopy()
         warnings = np.geterr(); np.seterr(invalid='ignore')
         if (isinstance(other,Run)):
-            assert(res.values.shape[0] == other.values.shape[0])
+            len_self, len_other = res.values.shape[0], other.values.shape[0]
+            if not(len_self == len_other):
+                raise Exception(f"Incompatible run shapes: {len_self}, {len_other}")
 
-            res.errors = res.errors/other.values + \
-                  res.values*other.errors/other.values**2
+            res.errors = np.abs(res.errors/other.values + \
+                  res.values*other.errors/other.values**2)
             res.values /= other.values
 
         elif isinstance(other,float) or isinstance(other,int):
             res.values /= other
-            res.errors /= other
+            res.errors /= np.abs(other)
         else:
             raise Exception("Div operation failed")
         np.seterr(**warnings)
@@ -363,6 +375,42 @@ class Run(object):
         return True
 
 
+    def abs(self):
+        """Return run with absolute values"""
+        run = self.deepcopy()
+        run.values = np.abs(run.values)
+        if 'name' in run.info:
+            run.update_info(name=run.name+' (abs)')
+        return run
+
+
+    def has_OUF(self):
+        for d in range(self.dim()):
+            if float('inf') in [abs(x) for x in self.edges[d]]:
+                return True
+        return False
+
+
+    def remove_OUF(self):
+        run = self.deepcopy()
+        if self.has_OUF():
+            poslist = [i for i,bins in enumerate(run.bins)
+                    if not float('inf') in (abs(e) for edges in bins for e in edges)]
+            run.bins = [run.bins[i] for i in poslist]
+            run.values = run.values[poslist]
+            run.errors = run.errors[poslist]
+        return run
+
+
+    def abs(self):
+        """Return run with absolute values"""
+        run = self.deepcopy()
+        run.values = np.abs(run.values)
+        if 'name' in run.info:
+            run.update_info(name=run.name+' (abs)')
+        return run
+
+
     def zoom(self, value=None, line=None, dim=0):
         """Zoom into one bin at one dimension to get a lower dim slice.
 
@@ -371,7 +419,7 @@ class Run(object):
         """
         if not(value == None):
             line = 0
-            while (self.edges[dim][line+1] < value
+            while (self.edges[dim][line+1] <= value
                    and line < self.dimensions()[dim]-1):
                 line += 1
 
@@ -501,7 +549,9 @@ class Run(object):
                 f.write('# Central setup: {}\n'\
                         .format(self.info.get("variation",'')[0]))
 
-            df.to_csv(f, index=False, float_format="%.6e")
+            df.to_csv(f, index=False, float_format="%.6e",
+                      header=kwargs.get('header',True))
+            print(f'Run saved to: {file}')
 
 
     @staticmethod

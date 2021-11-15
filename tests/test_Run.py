@@ -1,5 +1,5 @@
 from math import isclose
-from src.hightea.run import Run
+from src.hightea.plotting.run import Run
 import numpy as np
 from copy import deepcopy
 
@@ -23,7 +23,7 @@ def test_loading_json():
     assert(run.is_differential())
 
 def test_makehistogram_json():
-    run = Run('tests/input/2d.json')
+    run = Run('tests/input/simple2d.json')
     newrun = deepcopy(run)
     run.make_histogramlike()
     run.make_differential()
@@ -108,7 +108,7 @@ def test_div():
 ######################
 
 def test_name():
-    run = Run('tests/input/2d.json', name='testname')
+    run = Run('tests/input/simple2d.json', name='testname')
     assert(run.name == 'testname')
 
 ##########################

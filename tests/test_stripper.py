@@ -2,8 +2,8 @@ import pytest
 from math import isclose
 import numpy as np
 import src.hightea.plotting as hyt
-from src.hightea.stripper import convert_to_Run, load_to_Run
-from src.hightea._MeasurementTools  import MeasurementTools
+from src.hightea.plotting.stripper import convert_to_Run, load_to_Run
+from src.hightea.plotting._MeasurementTools  import MeasurementTools
 
 
 def test_loading_xml_1d():
