@@ -1,3 +1,4 @@
+import pytest
 from math import isclose
 from src.hightea.plotting.run import Run
 import numpy as np
@@ -12,15 +13,38 @@ def test_RunClass_create():
 
 def test_loading_dict():
     run = Run()
-    run.load({'mean': [[[[0,1]],[1.0]], [[[1,2]],[2.0]], [[[2,3]],[3.0]]],
-              'std':  [[[[0,1]],[0.1]], [[[1,2]],[0.2]], [[[2,3]],[0.3]]]})
+    run.load({'histogram': [
+        {'edges':[[0, 1]],'mean':[0], 'error':[0]},
+        {'edges':[[1, 2]],'mean':[1], 'error':[0]},
+        {'edges':[[2, 3]],'mean':[2], 'error':[0]},
+        ]})
     assert((run.edges[0] == np.array([0,1,2,3])).all())
+    run.load({'histogram': [
+        {'edges':[{'min_value':0,'max_value':1}],'mean':[0], 'error':[0]},
+        {'edges':[{'min_value':1,'max_value':2}],'mean':[1], 'error':[0]},
+        {'edges':[{'min_value':2,'max_value':3}],'mean':[2], 'error':[0]},
+        ]})
+    assert((run.edges[0] == np.array([0,1,2,3])).all())
+    assert((run.v() == np.array([0,1,2])).all())
+    with pytest.warns(UserWarning):
+        run.load({'histogram': [
+            {'edges':[{'min_value':0,'max_value':1}],'mean':0},
+            {'edges':[{'min_value':1,'max_value':2}],'mean':1},
+            {'edges':[{'min_value':2,'max_value':3}],'mean':2},
+            ]})
+        assert((run.v() == np.array([0,1,2])).all())
 
 def test_loading_json():
     run = Run()
     run.load('tests/input/simple1d.json')
-    assert(run.bins[0] == [[0,1]])
-    assert(run.is_differential())
+    assert run.bins[0] == [[0,1]]
+    assert run.is_differential()
+
+def test_loading_hepdata():
+    run = Run()
+    run.load('tests/input/HEPData-ins1610623-v1-Table_7.csv')
+    assert run.dim() == 1
+    assert isclose(run.edges[0][-1], 2.4)
 
 def test_makehistogram_json():
     run = Run('tests/input/simple2d.json')
@@ -77,7 +101,7 @@ def test_slicing_scale():
 def test_random():
     shape = [2,3,1]
     run = Run.random(shape,3)
-    assert(run.shape == shape)
+    assert(run.dimensions() == shape)
     expected = [np.array([0,1,2]), np.array([0,1,2,3]), np.array([0,1])]
     for r,e in zip(run.edges, expected):
         assert((r == e).all())

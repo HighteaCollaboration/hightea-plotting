@@ -33,8 +33,8 @@ class Run(object):
                 self.errors = np.zeros((len(bins),nsetups))
             elif (edges):
                 self.edges = edges
-                self.values = np.zeros((len(bins),nsetups))
-                self.errors = np.zeros((len(bins),nsetups))
+                self.values = np.zeros((len(self.bins),nsetups))
+                self.errors = np.zeros((len(self.bins),nsetups))
             self.info = {}
 
     def v(self):
@@ -124,11 +124,6 @@ class Run(object):
         self._edges = edges
         self._bins = Run.convert_to_bins(self._edges)
 
-    @property
-    def shape(self):
-        """Get dimensions for bins across all dimensions"""
-        return [len(edges) - 1 for edges in self.edges]
-
     def loading_methods(load):
         """Convenient loading methods to load data into Run class"""
         @wraps(load)
@@ -168,11 +163,21 @@ class Run(object):
                     else:
                         raise Exception('Supported cases: 6 or 8 columns.')
 
-                    data = {'mean': [[b,v] for b,v in zip(bins,vals)],\
-                            'std':  [[b,e] for b,e in zip(bins,errs)],\
-                            'info': {'differential': True, 'experiment': True}}
-
-                    data['file'] = request
+                    data = {'histogram': [
+                              {
+                                'edges': [{
+                                            'min_value':b[0],
+                                            'max_value':b[1],
+                                          }
+                                          for i,b in enumerate(bb)],
+                                'mean': v,
+                                'error': e,
+                              }
+                              for bb,v,e in zip(bins,vals,errs)
+                            ]}
+                    data['info'] = {'file': request,
+                                    'differential': True,
+                                    'experiment': True}
                     load(self,data,**kwargs)
 
                 else:
@@ -186,37 +191,37 @@ class Run(object):
         Uses hightea output interface as input.
         Can be fed with dictionary or path to JSON/YAML file.
         """
-        self.info = {}
-        self.info['file'] = request.get('file')
-
-        mean = request.get('mean',[])
-        std = request.get('std',[])
+        hist = request.get('histogram')
+        bins = []
         values = []
         errors = []
-        bins = []
+        for entry in hist:
+            bins.append(entry.get('edges',[[]]))
+            values.append(entry.get('mean',[]))
+            errors.append(entry.get('error',[]))
 
-        for m in mean:
-            bins.append(m[0])
-            values.append(m[1])
-
-        for s in std:
-            errors.append(s[1])
-
+        # two possible bin formats
+        if isinstance(bins[0][0], dict):
+            bins = [[[b['min_value'],b['max_value']] for b in bb] for bb in bins]
         self.bins = bins
-        self.values = np.array(values)
-        self.errors = np.array(errors)
 
-        # TODO: test
-        if 'xsec' in request:
-            self.xsec = np.array(request.get('xsec'))
+        # values & errors can be 1d or 2d lists
+        if (isinstance(values[0],list) or isinstance(values[0],np.ndarray)):
+            self.values = np.array(values)
+            self.errors = np.array(errors)
+        else:
+            warnings.warn("Attempting reshaping input means and errors...")
+            self.values = np.expand_dims(np.array(values),1)
+            self.errors = np.expand_dims(np.array(errors),1)
 
-        if 'info' in request:
-            self.info.update(request.get('info'))
+        # retrieve info
+        self.info = request.get('info',{})
+        self.info['file'] = request.get('file')
 
-        # other
-        # TODO: review location of this
-        # self.name = request.get('name')
-        # self.variable = request.get('variable')
+        if 'fiducial_mean' in request:
+            xsec = [request.get('fiducial_mean')]
+            xsec.append(request.get('fiducial_error', [0.]*len(xsec[0])))
+            self.xsec = np.transpose(xsec)
 
         # Final corrections
         for key,value in kwargs.items():
@@ -257,6 +262,9 @@ class Run(object):
         if self.is_differential():
             warnings.warn("Already is differential")
             return self
+
+        self.remove_OUF(inplace=True)
+
         def area(bins):
             a = 1
             for b in bins: a *= b[1]-b[0]
@@ -270,7 +278,6 @@ class Run(object):
             self.errors[i] = e/areas[i]
 
         self.info['differential'] = True
-        return self
 
 
     def __add__(self,other):
@@ -391,11 +398,11 @@ class Run(object):
         return False
 
 
-    def remove_OUF(self):
-        run = self.deepcopy()
+    def remove_OUF(self,inplace=False):
+        run = self if inplace else self.deepcopy()
         if self.has_OUF():
             poslist = [i for i,bins in enumerate(run.bins)
-                    if not float('inf') in (abs(e) for edges in bins for e in edges)]
+                if not float('inf') in (abs(e) for edges in bins for e in edges)]
             run.bins = [run.bins[i] for i in poslist]
             run.values = run.values[poslist]
             run.errors = run.errors[poslist]
@@ -506,11 +513,20 @@ class Run(object):
     def to_htdict(self):
         """Get dictionary in hightea format from this run"""
         res = {}
-        res['mean'] = list(zip(self.bins, self.values.tolist()))
-        res['std'] = list(zip(self.bins, self.errors.tolist()))
-        for attr in 'xsec'.split():
-            if hasattr(self,attr):
-                res[attr] = getattr(self,attr)
+        res['histogram'] = [{
+                            'edges': [{
+                                        'min_value':b[0],
+                                        'max_value':b[1],
+                                      }
+                                      for b in bb],
+                            'mean': list(v),
+                            'error': list(e),
+                            }
+                            for bb,v,e in zip(self.bins, self.values, self.errors)
+        ]
+        if hasattr(self,'xsec'):
+            res['fiducial_mean'] = self.xsec[:,0]
+            res['fiducial_error'] = self.xsec[:,1]
 
         res['info'] = self.info
         return res
@@ -558,8 +574,7 @@ class Run(object):
     def convert_to_edges(binsList):
         """Get edges for each dimension given a list of bins"""
         if len(binsList[0]) == 1:
-            return [np.array([ binsList[0][0][0] ]
-                           + [ bins[0][1] for bins in binsList ])]
+            return [[ binsList[0][0][0] ] + [ bins[0][1] for bins in binsList ]]
         ndims = len(binsList[0])
         edgesList = []
         for dim in range(0, ndims):

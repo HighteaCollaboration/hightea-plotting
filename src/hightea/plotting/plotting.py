@@ -183,9 +183,10 @@ def plot_unrolled(ax, *runs, **kwargs):
 
     # show dimension edges for multidimensional distributions
     if (runs[0].dim() > 1):
-        for j in range(1,runs[0].dimensions()[0]):
-            ax.axvline(runs[0].edges[1][0] +
-                        j*(runs[0].edges[1][-1] - runs[0].edges[1][0]),
+        run = runs[0].remove_OUF()
+        for j in range(1,run.dimensions()[0]):
+            ax.axvline(run.edges[1][0] +
+                        j*(run.edges[1][-1] - run.edges[1][0]),
                         ls=':', color='gray')
 
     if (_showGrid):
