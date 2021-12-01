@@ -1,4 +1,4 @@
-import pathlib
+from pathlib import Path
 import json
 import re
 import warnings
@@ -33,8 +33,8 @@ class Run(object):
                 self.errors = np.zeros((len(bins),nsetups))
             elif (edges):
                 self.edges = edges
-                self.values = np.zeros((len(bins),nsetups))
-                self.errors = np.zeros((len(bins),nsetups))
+                self.values = np.zeros((len(self.bins),nsetups))
+                self.errors = np.zeros((len(self.bins),nsetups))
             self.info = {}
 
     def v(self):
@@ -124,19 +124,14 @@ class Run(object):
         self._edges = edges
         self._bins = Run.convert_to_bins(self._edges)
 
-    @property
-    def shape(self):
-        """Get dimensions for bins across all dimensions"""
-        return [len(edges) - 1 for edges in self.edges]
-
     def loading_methods(load):
         """Convenient loading methods to load data into Run class"""
         @wraps(load)
         def inner(self,request,**kwargs):
             if (isinstance(request,dict)):
                 load(self,request,**kwargs)
-            elif (isinstance(request,str)):
-                ext = '.'+kwargs.get('ext',pathlib.Path(request).suffix[1:])
+            elif (isinstance(request,str) or isinstance(request,Path)):
+                ext = '.'+kwargs.get('ext',Path(request).suffix[1:])
 
                 if (ext) == '.json':
                     """File format as provided by hightea"""
@@ -168,11 +163,21 @@ class Run(object):
                     else:
                         raise Exception('Supported cases: 6 or 8 columns.')
 
-                    data = {'mean': [[b,v] for b,v in zip(bins,vals)],\
-                            'std':  [[b,e] for b,e in zip(bins,errs)],\
-                            'info': {'differential': True, 'experiment': True}}
-
-                    data['file'] = request
+                    data = {'histogram': [
+                              {
+                                'edges': [{
+                                            'min_value':b[0],
+                                            'max_value':b[1],
+                                          }
+                                          for i,b in enumerate(bb)],
+                                'mean': v,
+                                'error': e,
+                              }
+                              for bb,v,e in zip(bins,vals,errs)
+                            ]}
+                    data['info'] = {'file': request,
+                                    'differential': True,
+                                    'experiment': True}
                     load(self,data,**kwargs)
 
                 else:
@@ -186,37 +191,39 @@ class Run(object):
         Uses hightea output interface as input.
         Can be fed with dictionary or path to JSON/YAML file.
         """
-        self.info = {}
-        self.info['file'] = request.get('file')
-
-        mean = request.get('mean',[])
-        std = request.get('std',[])
+        hist = request.get('histogram')
+        bins = []
         values = []
         errors = []
-        bins = []
+        for entry in hist:
+            bins.append(entry.get('edges',[[]]))
+            values.append(entry.get('mean',[]))
+            errors.append(entry.get('error',[]))
 
-        for m in mean:
-            bins.append(m[0])
-            values.append(m[1])
-
-        for s in std:
-            errors.append(s[1])
-
+        # two possible bin formats
+        if isinstance(bins[0][0], dict):
+            bins = [[[b['min_value'],b['max_value']] for b in bb] for bb in bins]
         self.bins = bins
-        self.values = np.array(values)
-        self.errors = np.array(errors)
 
-        # TODO: test
-        if 'xsec' in request:
-            self.xsec = np.array(request.get('xsec'))
+        # values & errors can be 1d or 2d lists
+        if (isinstance(values[0],list) or isinstance(values[0],np.ndarray)):
+            self.values = np.array(values)
+            self.errors = np.array(errors)
+        else:
+            # warnings.warn("Attempting reshaping input means and errors...")
+            self.values = np.expand_dims(np.array(values),1)
+            self.errors = np.expand_dims(np.array(errors),1)
 
-        if 'info' in request:
-            self.info.update(request.get('info'))
+        # retrieve info
+        self.info = request.get('info',{})
+        self.info['file'] = request.get('file')
 
-        # other
-        # TODO: review location of this
-        # self.name = request.get('name')
-        # self.variable = request.get('variable')
+        if 'fiducial_mean' in request:
+            xsec = [request.get('fiducial_mean')]
+            if not(isinstance(xsec[0],list)): xsec = [xsec]
+            xsec.append(request.get('fiducial_error', [0.]*len(xsec[0])))
+            xsec = np.array(xsec,dtype=object)
+            self.xsec = np.transpose(xsec)
 
         # Final corrections
         for key,value in kwargs.items():
@@ -257,6 +264,9 @@ class Run(object):
         if self.is_differential():
             warnings.warn("Already is differential")
             return self
+
+        self.remove_OUF(inplace=True)
+
         def area(bins):
             a = 1
             for b in bins: a *= b[1]-b[0]
@@ -270,7 +280,6 @@ class Run(object):
             self.errors[i] = e/areas[i]
 
         self.info['differential'] = True
-        return self
 
 
     def __add__(self,other):
@@ -391,11 +400,11 @@ class Run(object):
         return False
 
 
-    def remove_OUF(self):
-        run = self.deepcopy()
+    def remove_OUF(self,inplace=False):
+        run = self if inplace else self.deepcopy()
         if self.has_OUF():
             poslist = [i for i,bins in enumerate(run.bins)
-                    if not float('inf') in (abs(e) for edges in bins for e in edges)]
+                if not float('inf') in (abs(e) for edges in bins for e in edges)]
             run.bins = [run.bins[i] for i in poslist]
             run.values = run.values[poslist]
             run.errors = run.errors[poslist]
@@ -503,23 +512,47 @@ class Run(object):
         self.edges = [x for x in self.edges if (len(x) > 2)]
 
 
-    def to_htdict(self):
+    def to_htdict(self,combined=True):
         """Get dictionary in hightea format from this run"""
         res = {}
-        res['mean'] = list(zip(self.bins, self.values.tolist()))
-        res['std'] = list(zip(self.bins, self.errors.tolist()))
-        for attr in 'xsec'.split():
-            if hasattr(self,attr):
-                res[attr] = getattr(self,attr)
+        values = self.values.tolist()
+        errors = self.errors.tolist()
+        res['histogram'] = [{
+                            'edges': [{
+                                        'min_value':b[0],
+                                        'max_value':b[1],
+                                      }
+                                      for b in bb],
+                            'mean': v[0] if len(v) == 1 else v,
+                            'error': e[0] if len(e) == 1 else e,
+                            }
+                            for bb,v,e in zip(self.bins, values, errors)
+        ]
+        if hasattr(self,'xsec'):
+            res['fiducial_mean'] = self.xsec[:,0]
+            res['fiducial_error'] = self.xsec[:,1]
 
         res['info'] = self.info
         return res
 
 
-    def to_json(self,file):
+    def to_json(self,file,combined=False,verbose=True):
         """Dump run to JSON file in hightea format"""
-        with open(file, 'w') as f:
-            json.dump(self.to_htdict(), f)
+        if combined:
+            with open(file, 'w') as f:
+                json.dump(self.to_htdict(combined=combined), f)
+                if verbose:
+                    print(f'Saved to "{file}"')
+        else:
+            basefile = Path(file)
+            for i in range(self.nsetups()):
+                numbered_file = str(basefile.parent / basefile.stem) \
+                                + f'-{i}{basefile.suffix}'
+                with open(numbered_file, 'w') as f:
+                    json.dump(self[i].to_htdict(combined=combined), f)
+                    if verbose:
+                        print(f'Saved to "{numbered_file}"')
+
 
 
     def to_csv(self,file,**kwargs):
@@ -558,8 +591,7 @@ class Run(object):
     def convert_to_edges(binsList):
         """Get edges for each dimension given a list of bins"""
         if len(binsList[0]) == 1:
-            return [np.array([ binsList[0][0][0] ]
-                           + [ bins[0][1] for bins in binsList ])]
+            return [[ binsList[0][0][0] ] + [ bins[0][1] for bins in binsList ]]
         ndims = len(binsList[0])
         edgesList = []
         for dim in range(0, ndims):
@@ -590,34 +622,34 @@ class Run(object):
 
     # # TODO: test
     @staticmethod
-    def full(dims, scales=1, fill_value=0):
+    def full(dims, nsetups=1, fill_value=0):
         """Get run with filled const values"""
         run = Run()
         run.edges = [list(range(d+1)) for d in dims if d > 0]
-        run.values = np.full((len(run.bins),scales),float(fill_value))
-        run.errors = np.full((len(run.bins),scales),0.)
+        run.values = np.full((len(run.bins),nsetups),float(fill_value))
+        run.errors = np.full((len(run.bins),nsetups),0.)
         return run
 
     @staticmethod
-    def seq(dims, scales=1):
+    def seq(dims, nsetups=1):
         """Get a multi-dimensional run for testing purposes
 
         Fills values with sequential values.
         """
         run = Run()
         run.edges = [list(range(d+1)) for d in dims if d > 0]
-        run.values = np.arange(0,len(run.bins),1./scales)\
-                    .reshape(len(run.bins),scales)
+        run.values = np.arange(0,len(run.bins),1./nsetups)\
+                    .reshape(len(run.bins),nsetups)
         run.errors = run.values / 10
         return run
 
     @staticmethod
-    def random(dims, scales=1):
+    def random(dims, nsetups=1):
         """Get random multi-dimensional run for testing purposes"""
         run = Run()
         run.edges = [list(range(d+1)) for d in dims if d > 0]
-        run.values = np.random.rand(len(run.bins),scales)
-        run.errors = np.random.rand(len(run.bins),scales) / 10
+        run.values = np.random.rand(len(run.bins),nsetups)
+        run.errors = np.random.rand(len(run.bins),nsetups) / 10
         return run
 
 

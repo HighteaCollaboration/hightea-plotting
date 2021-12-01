@@ -49,7 +49,7 @@ def _convert_args_to_Runs(plotfunc):
 @_convert_args_to_Runs
 def plot(*runs, **kwargs):
     """General plotting routine for 1d histograms"""
-    fig = plt.figure(**_select_keys(kwargs,'figsize'))
+    fig = kwargs.get('figure',plt.figure(**_select_keys(kwargs,'figsize')))
 
     _showLegend = kwargs.get('legend', True)
     _show = kwargs.get('show', True)
@@ -92,8 +92,8 @@ def plot(*runs, **kwargs):
         ax2.set_ylim(max(ylim[0], -10), min(ylim[1], 10))
         ax2.set_ylabel('Ratio')
         if (_lim):
-            if ('x2' in _lim): ax1.set_xlim(_lim.get('x2'))
-            if ('y2' in _lim): ax1.set_ylim(_lim.get('y2'))
+            if ('x2' in _lim): ax2.set_xlim(_lim.get('x2'))
+            if ('y2' in _lim): ax2.set_ylim(_lim.get('y2'))
         plt.tight_layout()
 
     if (binning):
@@ -130,8 +130,6 @@ def plot(*runs, **kwargs):
     if (_show):
         plt.show()
 
-    plt.clf()
-
 
 def plot_unrolled(ax, *runs, **kwargs):
     """Procedure to draw 1d runs"""
@@ -143,16 +141,18 @@ def plot_unrolled(ax, *runs, **kwargs):
     # plot each run separately
     for i,run in enumerate(runs):
 
+        color = _colorscheme[i % len(_colorscheme)]
+
         # separate treatment for experimental data and theoretical distributions
         if not(run.info.get('experiment',False)):
             _plot_theory(ax,run.remove_OUF(),**kwargs,
-                            color=_colorscheme[i],
+                            color=color,
                             label=f'run {i}' if run.name==None else run.name,
                             errshift=.03*(i-(len(runs)-1)/2))
 
         else:
             _plot_experiment(ax,run.remove_OUF(),**kwargs,
-                            color=_colorscheme[i],
+                            color=color,
                             label=f'data {i}' if run.name==None else run.name)
 
         # put OUF bins on plot if they exist
@@ -172,7 +172,7 @@ def plot_unrolled(ax, *runs, **kwargs):
                 oufrun.errors = np.array([list(run.errors[i])*2])
                 return oufrun
 
-            OUFkwargs = dict(**kwargs,label=None,color=_colorscheme[i],
+            OUFkwargs = dict(**kwargs,label=None,color=color,
                              errshift=.03*(i-(len(runs)-1)/2))
 
             if abs(run.edges[0][-1]) == float('inf'):
@@ -183,9 +183,10 @@ def plot_unrolled(ax, *runs, **kwargs):
 
     # show dimension edges for multidimensional distributions
     if (runs[0].dim() > 1):
-        for j in range(1,runs[0].dimensions()[0]):
-            ax.axvline(runs[0].edges[1][0] +
-                        j*(runs[0].edges[1][-1] - runs[0].edges[1][0]),
+        run = runs[0].remove_OUF()
+        for j in range(1,run.dimensions()[0]):
+            ax.axvline(run.edges[1][0] +
+                        j*(run.edges[1][-1] - run.edges[1][0]),
                         ls=':', color='gray')
 
     if (_showGrid):
