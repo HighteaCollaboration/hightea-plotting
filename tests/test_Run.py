@@ -3,13 +3,16 @@ from math import isclose
 from src.hightea.plotting.run import Run
 import numpy as np
 from copy import deepcopy
+from pathlib import Path
+import os
+import shutil
 
 def test_RunClass_create():
     run = Run()
 
-#####################
-#  loading methods  #
-#####################
+#################
+#  I/O methods  #
+#################
 
 def test_loading_dict():
     run = Run()
@@ -26,19 +29,32 @@ def test_loading_dict():
         ]})
     assert((run.edges[0] == np.array([0,1,2,3])).all())
     assert((run.v() == np.array([0,1,2])).all())
-    with pytest.warns(UserWarning):
-        run.load({'histogram': [
-            {'edges':[{'min_value':0,'max_value':1}],'mean':0},
-            {'edges':[{'min_value':1,'max_value':2}],'mean':1},
-            {'edges':[{'min_value':2,'max_value':3}],'mean':2},
-            ]})
-        assert((run.v() == np.array([0,1,2])).all())
+    # with pytest.warns(UserWarning):
+    run.load({'histogram': [
+        {'edges':[{'min_value':0,'max_value':1}],'mean':0},
+        {'edges':[{'min_value':1,'max_value':2}],'mean':1},
+        {'edges':[{'min_value':2,'max_value':3}],'mean':2},
+        ]})
+    assert((run.v() == np.array([0,1,2])).all())
 
 def test_loading_json():
     run = Run()
     run.load('tests/input/simple1d.json')
     assert run.bins[0] == [[0,1]]
     assert run.is_differential()
+
+def test_dumping_json():
+    run = Run.seq((4,5),nsetups=5)
+    wdir = 'tests/tmp'
+    if not os.path.isdir(wdir):
+        os.makedirs(wdir)
+    run.to_json(Path(wdir,'run.json'),verbose=False)
+    new = Run(Path(wdir,'run-0.json'))
+    assert new.nsetups() == 1
+    run.to_json(Path(wdir,'run.json'),verbose=False,combined=True)
+    new = Run(Path(wdir,'run.json'))
+    assert new.nsetups() == run.nsetups()
+    shutil.rmtree(wdir)
 
 def test_loading_hepdata():
     run = Run()
@@ -146,16 +162,16 @@ def test_eq():
     assert(new == run)
 
 def test_add():
-    run = Run.random((2,3),scales=3)
-    zeros = Run.full((2,3),scales=3)
+    run = Run.random((2,3),nsetups=3)
+    zeros = Run.full((2,3),nsetups=3)
     new = zeros + run
     assert(new == run)
     assert(2 - 2 + zeros + 1 - 1 == zeros)
 
 def test_muldiv():
-    old = Run.random((2,3),scales=3)
+    old = Run.random((2,3),nsetups=3)
     new = deepcopy(old)
-    run = Run.random((2,3),scales=3)
+    run = Run.random((2,3),nsetups=3)
     new *= run*.3
     new *= .3*run
     new /= .01*run

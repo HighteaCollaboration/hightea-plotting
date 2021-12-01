@@ -1,4 +1,4 @@
-import pathlib
+from pathlib import Path
 import json
 import re
 import warnings
@@ -130,8 +130,8 @@ class Run(object):
         def inner(self,request,**kwargs):
             if (isinstance(request,dict)):
                 load(self,request,**kwargs)
-            elif (isinstance(request,str)):
-                ext = '.'+kwargs.get('ext',pathlib.Path(request).suffix[1:])
+            elif (isinstance(request,str) or isinstance(request,Path)):
+                ext = '.'+kwargs.get('ext',Path(request).suffix[1:])
 
                 if (ext) == '.json':
                     """File format as provided by hightea"""
@@ -210,7 +210,7 @@ class Run(object):
             self.values = np.array(values)
             self.errors = np.array(errors)
         else:
-            warnings.warn("Attempting reshaping input means and errors...")
+            # warnings.warn("Attempting reshaping input means and errors...")
             self.values = np.expand_dims(np.array(values),1)
             self.errors = np.expand_dims(np.array(errors),1)
 
@@ -510,19 +510,21 @@ class Run(object):
         self.edges = [x for x in self.edges if (len(x) > 2)]
 
 
-    def to_htdict(self):
+    def to_htdict(self,combined=True):
         """Get dictionary in hightea format from this run"""
         res = {}
+        values = self.values.tolist()
+        errors = self.errors.tolist()
         res['histogram'] = [{
                             'edges': [{
                                         'min_value':b[0],
                                         'max_value':b[1],
                                       }
                                       for b in bb],
-                            'mean': list(v),
-                            'error': list(e),
+                            'mean': v[0] if len(v) == 1 else v,
+                            'error': e[0] if len(e) == 1 else e,
                             }
-                            for bb,v,e in zip(self.bins, self.values, self.errors)
+                            for bb,v,e in zip(self.bins, values, errors)
         ]
         if hasattr(self,'xsec'):
             res['fiducial_mean'] = self.xsec[:,0]
@@ -532,10 +534,23 @@ class Run(object):
         return res
 
 
-    def to_json(self,file):
+    def to_json(self,file,combined=False,verbose=True):
         """Dump run to JSON file in hightea format"""
-        with open(file, 'w') as f:
-            json.dump(self.to_htdict(), f)
+        if combined:
+            with open(file, 'w') as f:
+                json.dump(self.to_htdict(combined=combined), f)
+                if verbose:
+                    print(f'Saved to "{file}"')
+        else:
+            basefile = Path(file)
+            for i in range(self.nsetups()):
+                numbered_file = str(basefile.parent / basefile.stem) \
+                                + f'-{i}{basefile.suffix}'
+                with open(numbered_file, 'w') as f:
+                    json.dump(self[i].to_htdict(combined=combined), f)
+                    if verbose:
+                        print(f'Saved to "{numbered_file}"')
+
 
 
     def to_csv(self,file,**kwargs):
@@ -605,34 +620,34 @@ class Run(object):
 
     # # TODO: test
     @staticmethod
-    def full(dims, scales=1, fill_value=0):
+    def full(dims, nsetups=1, fill_value=0):
         """Get run with filled const values"""
         run = Run()
         run.edges = [list(range(d+1)) for d in dims if d > 0]
-        run.values = np.full((len(run.bins),scales),float(fill_value))
-        run.errors = np.full((len(run.bins),scales),0.)
+        run.values = np.full((len(run.bins),nsetups),float(fill_value))
+        run.errors = np.full((len(run.bins),nsetups),0.)
         return run
 
     @staticmethod
-    def seq(dims, scales=1):
+    def seq(dims, nsetups=1):
         """Get a multi-dimensional run for testing purposes
 
         Fills values with sequential values.
         """
         run = Run()
         run.edges = [list(range(d+1)) for d in dims if d > 0]
-        run.values = np.arange(0,len(run.bins),1./scales)\
-                    .reshape(len(run.bins),scales)
+        run.values = np.arange(0,len(run.bins),1./nsetups)\
+                    .reshape(len(run.bins),nsetups)
         run.errors = run.values / 10
         return run
 
     @staticmethod
-    def random(dims, scales=1):
+    def random(dims, nsetups=1):
         """Get random multi-dimensional run for testing purposes"""
         run = Run()
         run.edges = [list(range(d+1)) for d in dims if d > 0]
-        run.values = np.random.rand(len(run.bins),scales)
-        run.errors = np.random.rand(len(run.bins),scales) / 10
+        run.values = np.random.rand(len(run.bins),nsetups)
+        run.errors = np.random.rand(len(run.bins),nsetups) / 10
         return run
 
 
