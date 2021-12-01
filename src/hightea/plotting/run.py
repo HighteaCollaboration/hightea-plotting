@@ -220,7 +220,9 @@ class Run(object):
 
         if 'fiducial_mean' in request:
             xsec = [request.get('fiducial_mean')]
+            if not(isinstance(xsec[0],list)): xsec = [xsec]
             xsec.append(request.get('fiducial_error', [0.]*len(xsec[0])))
+            xsec = np.array(xsec,dtype=object)
             self.xsec = np.transpose(xsec)
 
         # Final corrections
