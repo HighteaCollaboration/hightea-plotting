@@ -215,7 +215,7 @@ class Run(object):
             self.errors = np.expand_dims(np.array(errors),1)
 
         # retrieve info
-        self.info = request.get('info',{})
+        self.info = dict(request.get('info',{}))
         self.info['file'] = request.get('file')
 
         if 'fiducial_mean' in request:
