@@ -57,9 +57,19 @@ def plot(*runs, **kwargs):
     _ratio = kwargs.get('ratio', None)
     _logscale = kwargs.get('logscale', None)
     _lim = kwargs.get('lim', {})
+    _latex = kwargs.get('latex', None)
     _showRatio = not(_ratio == None)
     _showSetup = kwargs.get('show_setup', None)
     _info = _get_info(runs, *'obs binning process variation'.split())
+
+    if not _latex is None:
+        if _latex:
+            plt.rc('font', family='CMU Serif', serif=['Roman'], size=14)
+            plt.rc('text', usetex=True)
+            plt.rc('text.latex',
+                    preamble=r'\usepackage{amsmath}\usepackage{amssymb}')
+        else:
+            plt.style.use('default')
 
     fig = kwargs.get('figure')
     if fig is None:
@@ -106,7 +116,7 @@ def plot(*runs, **kwargs):
         obslabel = binning[0].get('variable')
         ax1.set_xlabel(obslabel)
         # TODO: put labels on top of the picture for higher-dim plots
-        sigmaletter = 'σ'
+        sigmaletter = 'σ' if not _latex else '$\\sigma$'
         units = '[pb/X]' if runs[0].is_differential() else '[pb]'
         ax1.set_ylabel(f'd{sigmaletter} / d({obslabel}) {units}')
 
