@@ -110,7 +110,7 @@ def plot(*runs, **kwargs):
         if (_lim):
             if ('x2' in _lim): ax2.set_xlim(_lim.get('x2'))
             if ('y2' in _lim): ax2.set_ylim(_lim.get('y2'))
-        fig.set_tight_layout()
+        fig.set_tight_layout(True)
 
     if (binning):
         obslabel = binning[0].get('variable')
