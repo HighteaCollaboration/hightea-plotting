@@ -411,15 +411,6 @@ class Run(object):
         return run
 
 
-    def abs(self):
-        """Return run with absolute values"""
-        run = self.deepcopy()
-        run.values = np.abs(run.values)
-        if 'name' in run.info:
-            run.update_info(name=run.name+' (abs)')
-        return run
-
-
     def zoom(self, value=None, line=None, dim=0):
         """Zoom into one bin at one dimension to get a lower dim slice.
 
