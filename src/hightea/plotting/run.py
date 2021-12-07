@@ -124,6 +124,12 @@ class Run(object):
         self._edges = edges
         self._bins = Run.convert_to_bins(self._edges)
 
+    @staticmethod
+    def bin_area(bins):
+        a = 1
+        for b in bins: a *= b[1]-b[0]
+        return a
+
     def loading_methods(load):
         """Convenient loading methods to load data into Run class"""
         @wraps(load)
@@ -438,6 +444,69 @@ class Run(object):
                 newrun.info['obs'] += f' ({value})'
             else:
                 newrun.info['obs'] += f' [line={line}]'
+        return newrun
+
+
+    def mergebins(self, values=None, bins=None):
+        """ Merge bins by values or positions """
+
+        assert self.dim() == 1,\
+                "mergebins only accepts 1-dim runs"
+        dim = 0
+        newrun = self.minicopy()
+
+        if (values):
+            assert len(values) == 2
+            l, r = values
+            edges = np.array(newrun.edges[dim])
+            bins_to_merge = [(i,bb) for i,bb in enumerate(self.bins) \
+                        if bb[dim][0] >= l and bb[dim][1] <= r]
+
+        elif (bins):
+            assert len(bins) == 2
+            l, r = bins
+            edges = np.array(newrun.edges[dim])
+            bins_to_merge = [(i,bb) for i,bb in enumerate(self.bins) \
+                        if i >= l and i <= r]
+
+        else:
+            raise Exception("Bad input to mergebins")
+
+        bins_to_merge = sorted(bins_to_merge, reverse=True, key=lambda x:x[0])
+
+        merged_values = np.zeros((self.nsetups()))
+        merged_sqerrs = np.zeros((self.nsetups()))
+        new_bins = list(self.bins)
+        new_values = list(self.values)
+        new_errors = list(self.errors)
+
+        if self.is_differential():
+            factor = np.array([self.bin_area(b) for _,b in bins_to_merge])
+        else:
+            factor = np.ones((len(bins_to_merge)))
+
+        for i,b in enumerate(bins_to_merge):
+            bid = b[0]
+            merged_values += new_values.pop(bid) * factor[i]
+            merged_sqerrs += (new_errors.pop(bid) * factor[i])**2
+            new_bins.pop(bid)
+
+        if self.is_differential():
+            total_area = np.sum(factor)
+            merged_values /= total_area
+            merged_sqerrs /= total_area**2
+
+        i,_ = bins_to_merge[-1]
+        new_values.insert(i, merged_values)
+        new_errors.insert(i, np.sqrt(merged_sqerrs))
+        new_bins.insert(i, [[bins_to_merge[-1][1][0][0],\
+                             bins_to_merge[0][1][0][1]]])
+
+        newrun = Run(bins=new_bins)
+        newrun.values = np.array(new_values)
+        newrun.errors = np.array(new_errors)
+        newrun.info = dict(self.info)
+
         return newrun
 
 
