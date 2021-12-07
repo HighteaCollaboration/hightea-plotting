@@ -180,15 +180,13 @@ def test_muldiv():
 
 def test_mergebins():
     run = Run.seq((5,),nsetups=3)
-    newrun = run.mergebins(bins=(1,3))
+    newrun = run.mergebins(pos=(1,4))
     assert newrun.edges[0][2] == 4
     assert np.isclose(newrun.values[0][0], run.values[0][0])
     assert np.isclose(newrun.values[1][0], 6.)
     assert np.isclose(newrun.errors[1][0], np.sqrt(.1**2+.2**2+.3**2))
 
     run.edges = [list(range(5,11))]
-    print('run', run)
     newrun = run.mergebins(values=(5,8))
-    print('newrun', newrun)
     assert np.isclose(newrun.edges[0][1], 8)
 

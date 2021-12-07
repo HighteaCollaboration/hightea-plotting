@@ -447,32 +447,34 @@ class Run(object):
         return newrun
 
 
-    def mergebins(self, values=None, bins=None):
+    def merge(self, values=None, bins=None):
         """ Merge bins by values or positions """
 
         assert self.dim() == 1,\
                 "mergebins only accepts 1-dim runs"
         dim = 0
-        newrun = self.minicopy()
+        newrun = self.minicopy(copyinfo=True)
 
         if (values):
             assert len(values) == 2
             l, r = values
             edges = np.array(newrun.edges[dim])
             bins_to_merge = [(i,bb) for i,bb in enumerate(self.bins) \
-                        if bb[dim][0] >= l and bb[dim][1] <= r]
+                        if bb[dim][0] >= l and bb[dim][0] < r]
 
         elif (bins):
             assert len(bins) == 2
             l, r = bins
             edges = np.array(newrun.edges[dim])
             bins_to_merge = [(i,bb) for i,bb in enumerate(self.bins) \
-                        if i >= l and i <= r]
+                        if i >= l and i < r]    # not including the right bin
 
         else:
             raise Exception("Bad input to mergebins")
 
         bins_to_merge = sorted(bins_to_merge, reverse=True, key=lambda x:x[0])
+        if (len(bins_to_merge) < 2):
+            return newrun
 
         merged_values = np.zeros((self.nsetups()))
         merged_sqerrs = np.zeros((self.nsetups()))
@@ -548,7 +550,7 @@ class Run(object):
         return run
 
 
-    def minicopy(self):
+    def minicopy(self, copyinfo=False):
         """Minimal copy: only data"""
         run = Run()
         run.bins = deepcopy(self.bins)
@@ -559,6 +561,8 @@ class Run(object):
         for attr in 'experiment'.split():
             if attr in self.info:
                 run.update_info(**{attr:self.info.get(attr)})
+        if copyinfo:
+            run.info = dict(self.info)
         return run
 
 
