@@ -2,6 +2,7 @@ import numpy as np
 from functools import wraps
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.figure import Figure
 from .run import Run
 
 ###########################
@@ -42,14 +43,13 @@ def _convert_args_to_Runs(plotfunc):
                     runs.append(obj)
         for a in args:
             _convert_to_runs(runs, a)
-        plotfunc(*runs, **kwargs)
+        return plotfunc(*runs, **kwargs)
     return inner
 
 
 @_convert_args_to_Runs
 def plot(*runs, **kwargs):
     """General plotting routine for 1d histograms"""
-    fig = kwargs.get('figure',plt.figure(**_select_keys(kwargs,'figsize')))
 
     _showLegend = kwargs.get('legend', True)
     _show = kwargs.get('show', True)
@@ -57,9 +57,26 @@ def plot(*runs, **kwargs):
     _ratio = kwargs.get('ratio', None)
     _logscale = kwargs.get('logscale', None)
     _lim = kwargs.get('lim', {})
+    _latex = kwargs.get('latex', None)
     _showRatio = not(_ratio == None)
     _showSetup = kwargs.get('show_setup', None)
     _info = _get_info(runs, *'obs binning process variation'.split())
+
+    if not _latex is None:
+        if _latex:
+            plt.rc('font', family='CMU Serif', serif=['Roman'], size=14)
+            plt.rc('text', usetex=True)
+            plt.rc('text.latex',
+                    preamble=r'\usepackage{amsmath}\usepackage{amssymb}')
+        else:
+            plt.style.use('default')
+
+    fig = kwargs.get('figure')
+    if fig is None:
+        if _show:
+            fig = plt.figure(**_select_keys(kwargs,'figsize'))
+        else:
+            fig = Figure(**_select_keys(kwargs,'figsize'))
 
     obs = _info.get('obs','')
     binning = _info.get('binning',[])
@@ -69,9 +86,8 @@ def plot(*runs, **kwargs):
             if (k in obs):
                 _logscale = True
 
-    plt.suptitle(kwargs.get('title', obs))
-
-    ax1 = fig.add_subplot(3, 1, (1, 2)) if (_showRatio) else plt.gca()
+    fig.suptitle(kwargs.get('title', obs))
+    ax1 = fig.add_subplot(3, 1, (1, 2)) if (_showRatio) else fig.gca()
     plot_unrolled(ax1, *runs, **kwargs)
 
     if (_logscale):
@@ -94,13 +110,15 @@ def plot(*runs, **kwargs):
         if (_lim):
             if ('x2' in _lim): ax2.set_xlim(_lim.get('x2'))
             if ('y2' in _lim): ax2.set_ylim(_lim.get('y2'))
-        plt.tight_layout()
+        fig.set_tight_layout(True)
 
     if (binning):
         obslabel = binning[0].get('variable')
-        plt.xlabel(obslabel)
+        ax1.set_xlabel(obslabel)
         # TODO: put labels on top of the picture for higher-dim plots
-        ax1.set_ylabel(f'dσ / d({obslabel}) [pb/X]')
+        sigmaletter = 'σ' if not _latex else '$\\sigma$'
+        units = '[pb/X]' if runs[0].is_differential() else '[pb]'
+        ax1.set_ylabel(f'd{sigmaletter} / d({obslabel}) {units}')
 
     if (_lim):
         if ('x1' in _lim): ax1.set_xlim(_lim.get('x1'))
@@ -122,13 +140,15 @@ def plot(*runs, **kwargs):
         if (ext == 'pdf'):
             pp = PdfPages(_output); pp.savefig(); pp.close()
         elif (ext == 'png'):
-            plt.savefig(_output)
+            fig.savefig(_output)
         else:
             raise Exception("Unexpected extension")
         print(f'Figure saved to: {_output}')
 
     if (_show):
         plt.show()
+
+    return fig
 
 
 def plot_unrolled(ax, *runs, **kwargs):
