@@ -77,6 +77,7 @@ def convert_to_Run(mt: MT, file=0, **kwargs):
 
     run.values = v[:,setupids]
     run.errors = e[:,setupids]
+    run.hits = p
     run.xsec = np.transpose(mt.extractXSections(fileid)[setupids,:,0])
 
     info['obs'] = _obs
