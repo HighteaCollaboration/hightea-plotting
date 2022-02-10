@@ -264,11 +264,22 @@ def _plot_theory(ax,run,**kwargs):
             linewidth=_linewidth)
 
     if (_showScaleBand):
-        ax.fill_between(_edges,
-                        m(run.lower()),
-                        m(run.upper()),
-                        step='post',
-                        linewidth=0.0,
+        """ Several ways to show scale band """
+        if _showScaleBand in (True, 'fill'):
+            ax.fill_between(_edges,
+                            m(run.lower()),
+                            m(run.upper()),
+                            step='post',
+                            linewidth=0.0,
+                            color=_color,
+                            alpha=_alpha)
+
+        else:
+            for y in m(run.lower()), m(run.upper()):
+                ax.step(_edges, y,
+                        where='post',
+                        linestyle=_showScaleBand,
+                        linewidth=.7*_linewidth,
                         color=_color,
                         alpha=_alpha)
 
