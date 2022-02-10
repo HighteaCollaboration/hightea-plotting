@@ -52,6 +52,7 @@ def plot(*runs, **kwargs):
     """General plotting routine for 1d histograms"""
 
     _showLegend = kwargs.get('legend', True)
+    _fig = kwargs.get('figure')
     _show = kwargs.get('show', True)
     _output = kwargs.get('output', None)
     _ratio = kwargs.get('ratio', None)
@@ -71,12 +72,11 @@ def plot(*runs, **kwargs):
         else:
             plt.style.use('default')
 
-    fig = kwargs.get('figure')
-    if fig is None:
+    if _fig is None:
         if _show:
-            fig = plt.figure(**_select_keys(kwargs,'figsize'))
+            _fig = plt.figure(**_select_keys(kwargs,'figsize'))
         else:
-            fig = Figure(**_select_keys(kwargs,'figsize'))
+            _fig = Figure(**_select_keys(kwargs,'figsize'))
 
     obs = _info.get('obs','')
     binning = _info.get('binning',[])
@@ -86,8 +86,12 @@ def plot(*runs, **kwargs):
             if (k in obs):
                 _logscale = True
 
-    fig.suptitle(kwargs.get('title', obs))
-    ax1 = fig.add_subplot(3, 1, (1, 2)) if (_showRatio) else fig.gca()
+    _fig.suptitle(kwargs.get('title', obs))
+    axes = _fig.get_axes()
+    if axes:
+        ax1 = axes[0]
+    else:
+        ax1 = _fig.add_subplot(3, 1, (1, 2)) if (_showRatio) else _fig.gca()
     plot_unrolled(ax1, *runs, **kwargs)
 
     if (_logscale):
@@ -98,7 +102,10 @@ def plot(*runs, **kwargs):
             ax1.set_yscale('log')
 
     if (_showRatio):
-        ax2 = fig.add_subplot(3, 1, 3, sharex = ax1)
+        if len(axes) > 1:
+            ax2 = axes[1]
+        else:
+            ax2 = _fig.add_subplot(3, 1, 3, sharex = ax1)
         ax1.get_xaxis().set_visible(False)
         ratio_runs = []
         for i,r in enumerate(runs):
@@ -110,7 +117,7 @@ def plot(*runs, **kwargs):
         if (_lim):
             if ('x2' in _lim): ax2.set_xlim(_lim.get('x2'))
             if ('y2' in _lim): ax2.set_ylim(_lim.get('y2'))
-        fig.set_tight_layout(True)
+        _fig.set_tight_layout(True)
 
     if (binning):
         obslabel = binning[0].get('variable')
@@ -140,7 +147,7 @@ def plot(*runs, **kwargs):
         if (ext == 'pdf'):
             pp = PdfPages(_output); pp.savefig(); pp.close()
         elif (ext == 'png'):
-            fig.savefig(_output)
+            _fig.savefig(_output)
         else:
             raise Exception("Unexpected extension")
         print(f'Figure saved to: {_output}')
@@ -148,7 +155,7 @@ def plot(*runs, **kwargs):
     if (_show):
         plt.show()
 
-    return fig
+    return _fig
 
 
 def plot_unrolled(ax, *runs, **kwargs):
