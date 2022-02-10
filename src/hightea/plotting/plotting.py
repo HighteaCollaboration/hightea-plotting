@@ -160,6 +160,9 @@ def plot(*runs, **kwargs):
 
 def plot_unrolled(ax, *runs, **kwargs):
     """Procedure to draw 1d runs"""
+    if not len(runs):
+        print("No runs provided, exitting")
+        return
 
     _showGrid = kwargs.get('grid', True)
     _colorscheme = kwargs.get('colorscheme',colorscheme)
