@@ -95,7 +95,7 @@ class Run(object):
     def name(self):
         res = self.info.get('name')
         if (res == None):
-            res = self.info.get('file')
+            res = self.info.get('file','')
         return res
 
     @name.setter
@@ -330,6 +330,18 @@ class Run(object):
         elif isinstance(other,float) or isinstance(other,int):
             res.values *= other
             res.errors *= other
+
+        elif isinstance(other,np.ndarray):
+            if len(res.bins) == other.shape[0]: # multiply binwise by array
+                if len(other.shape) == 1:
+                    res.values *= other[:,np.newaxis]
+                    res.errors *= other[:,np.newaxis]
+                else:
+                    res.values *= other
+                    res.errors *= other
+            else:
+                raise Exception(f"ndarray shape: {other.shape} "
+                                + "incompatible to run {self.dimensions}")
         else:
             raise Exception("Mul operation failed")
         return res
@@ -355,6 +367,18 @@ class Run(object):
         elif isinstance(other,float) or isinstance(other,int):
             res.values /= other
             res.errors /= np.abs(other)
+
+        elif isinstance(other,np.ndarray):
+            if len(res.bins) == other.shape[0]: # divide binwise by array
+                if len(other.shape) == 1:
+                    res.values /= other[:,np.newaxis]
+                    res.errors /= other[:,np.newaxis]
+                else:
+                    res.values /= other
+                    res.errors /= other
+            else:
+                raise Exception(f"ndarray shape: {other.shape} "
+                                + "incompatible to run {self.dimensions}")
         else:
             raise Exception("Div operation failed")
         np.seterr(**warnings)
