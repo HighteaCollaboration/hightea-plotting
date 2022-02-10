@@ -471,7 +471,7 @@ class Run(object):
         return newrun
 
 
-    def merge(self, values=None, bins=None):
+    def mergebins(self, values=None, pos=None):
         """ Merge bins by values or positions """
 
         assert self.dim() == 1,\
@@ -486,9 +486,9 @@ class Run(object):
             bins_to_merge = [(i,bb) for i,bb in enumerate(self.bins) \
                         if bb[dim][0] >= l and bb[dim][0] < r]
 
-        elif (bins):
-            assert len(bins) == 2
-            l, r = bins
+        elif (pos):
+            assert len(pos) == 2
+            l, r = pos
             edges = np.array(newrun.edges[dim])
             bins_to_merge = [(i,bb) for i,bb in enumerate(self.bins) \
                         if i >= l and i < r]    # not including the right bin
