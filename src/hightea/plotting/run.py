@@ -658,8 +658,12 @@ class Run(object):
             df['VALUE [PB]'] = self.v()
             df['ERROR+'] = self.e()
             df['ERROR-'] = -self.e()
-            df['SYS+'] = self.upper() - self.v()
-            df['SYS-'] = self.lower() - self.v()
+            if (kwargs.get('all_values', False)):
+                for i in range(self.nsetups()):
+                    df[f'VAL{i}'] = self.values[:,i]
+            else:
+                df['SYS+'] = self.upper() - self.v()
+                df['SYS-'] = self.lower() - self.v()
         else:
             raise Exception("Multi dimensional data dump to CSV not supported yet")
 
