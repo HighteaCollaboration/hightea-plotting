@@ -299,14 +299,11 @@ def _plot_experiment(ax,run,**kwargs):
     _xs = np.array([.5*(l+r) for l,r in zip(_edges[:-1],_edges[1:])])
     _color = kwargs.get('color')
     _errshift = kwargs.get('errorshift',0)
-    _showScaleBand = kwargs.get('showScaleBand', True)
-    _showErrors = kwargs.get('showErrors', True)
     _marker = kwargs.get('marker', 'o')
     _ms = kwargs.get('ms', 3)
     _capsize = kwargs.get('capsize', 5.)
     _label = kwargs.get('label')
     _linewidth = kwargs.get('linewidth', 2.5)
-    _alpha = kwargs.get('alpha', .3)
 
     ax.errorbar(x=_xs,
                 y=run.v(),
