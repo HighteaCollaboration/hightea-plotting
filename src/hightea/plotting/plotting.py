@@ -109,7 +109,7 @@ def plot(*runs, **kwargs):
         ax1.get_xaxis().set_visible(False)
         ratio_runs = []
         for i,r in enumerate(runs):
-            ratio_runs.append(runs[i] / runs[_ratio][0])
+            ratio_runs.append(runs[i] / runs[_ratio].v())
         plot_unrolled(ax2, *ratio_runs, **kwargs, legend=False)
         ylim = ax2.get_ylim()
         ax2.set_ylim(max(ylim[0], -10), min(ylim[1], 10))
