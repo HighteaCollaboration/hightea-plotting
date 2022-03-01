@@ -126,6 +126,7 @@ def load_to_Run(xmlfile, **kwargs):
     Parameters
     ----------
     xmlfile : str
+        XML file produced by Stripper.
 
     Note
     ----
