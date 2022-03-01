@@ -49,9 +49,83 @@ def _convert_args_to_Runs(plotfunc):
 
 @_convert_args_to_Runs
 def plot(*runs, **kwargs):
-    """General plotting routine for 1d histograms"""
+    """General plotting routine
 
-    _showLegend = kwargs.get('legend', True)
+    Parameters
+    ----------
+    *runs
+        Objects that are instances of Run class, or can be cast into one
+        (filepaths as strings, dictionaries), passed as positional arguments.
+
+    **kwargs
+        Optional keyword arguments
+
+        - show : bool, default: True
+            Show plot after being done.
+
+        - ratio : int
+            Add ratio plot w.r.t run under provided id.
+
+        - figsize : tuple
+            Specify size of figure in the same way as matplotlib.
+
+        - logscale : bool
+            Plot on logscale over axes of interest.
+            Possible values: 'x', 'y', 'xy'.
+
+        - lim : dict
+            Specify limits on axes, e.g {'y2': [0.8,1.2]}.
+
+        - latex : bool, default: False
+            Use latex fonts on plots (warning: slow).
+
+        - title : str
+            Specify plot title.
+
+        - show_setup : bool
+            Show information on central setup.
+
+        - output : str
+            Save to png/pdf file if specified.
+
+        - figure : matplotlib.pyplot.Figure
+            If passed, use as canvas, otherwise create new.
+
+    Examples
+    --------
+    >>> # Import library
+    >>> import hightea.plotting as ht
+
+    >>> # Plot data stored in files
+    >>> ht.plot('HEPDATA-experiment.csv', 'request.json')
+
+    >>> # Construct and plot random runs
+    >>> run = ht.Run.random([10], nsetups=3)
+    >>> run2 = run.minicopy()
+    >>> run2 += 1
+    >>> ht.plot(run, run2, ratio=0, figsize=(16,9), title='Random runs')
+
+    >>> # Example of plotting on top of the data
+    >>> import matplotlib.pyplot as plt
+    >>> fig = plt.figure()
+    >>> runs = ...
+    >>> ht.plot(*runs, figure=fig, show=False)
+    >>> ax = fig.get_axes()[0]
+    >>> X = np.array([(l+r)/2 for l,r in zip(run.edges[0][:-1], run.edges[0][1:])])
+    >>> Y = (X**2+2*80**2)**-2
+    >>> ax.scatter(X, Y, label='fit')
+    >>> ax.legend()
+    >>> plt.show()
+
+    Note
+    ----
+    See supporting procedures to see how other keyword arguments are used.
+
+    Returns
+    -------
+    matplotlib.pyplot.Figure
+        Figure which used in plotting to allow further manipulations.
+    """
     _fig = kwargs.get('figure')
     _show = kwargs.get('show', True)
     _output = kwargs.get('output', None)
@@ -159,7 +233,50 @@ def plot(*runs, **kwargs):
 
 
 def plot_unrolled(ax, *runs, **kwargs):
-    """Procedure to draw 1d runs"""
+    """Procedure to plot provided runs as 1D unrolled histograms
+
+    Parameters
+    ----------
+    *runs
+        Runs passed as positional arguments.
+
+    **kwargs
+        - grid : bool, default: True
+            If True, show grid on plot.
+
+        - colorscheme : list
+            List of colors to use for provided runs.
+
+        - legend : bool
+            If True, show legend.
+
+    Examples
+    --------
+    >>> # Example of a more involved plot using underlying routines
+    >>> hightea.plotting as ht
+    >>> matplotlib.pyplot as plt
+    >>> run = ht.Run.random([10], nsetups=3)
+    >>> runs = dict(lo=run, data=run+0.5, nnlo=(run+0.6).update_info('NNLO absolute'))
+    >>> fig = plt.figure()
+    >>> ax = fig.add_subplot(2,1,1)
+    >>> ht.plotting.plot_unrolled(ax, runs['nnlo'])
+    >>> ax = fig.add_subplot(2,1,2)
+    >>> ht.plotting.plot_unrolled(ax, *[
+    >>>         (runs['lo']/runs['data'].v())[0].update_info('LO (central scale)'),
+    >>>         (runs['data']/runs['data'].v()).update_info(name='NLO', experiment=True),
+    >>>         (runs['nnlo']/runs['nlo'].v()).update_info('NNLO'),
+    >>>     ])
+    >>> ax.set_ylabel('Ratio to data')
+    >>> plt.show()
+
+    Note
+    ----
+    See supporting procedures to see how other keyword arguments are used.
+
+    Returns
+    -------
+    None
+    """
     if not len(runs):
         print("No runs provided, exitting")
         return
@@ -227,7 +344,16 @@ def plot_unrolled(ax, *runs, **kwargs):
 
 
 def _get_unrolled(edges):
-    """Return just bins or unrolled bins for 2d plot"""
+    """Unroll edges of 2D run into bins of 1D run
+
+    Parameters
+    ----------
+    edges : list
+
+    Returns
+    -------
+    list
+    """
     if len(edges) == 1:
         return np.array(edges[0])
     elif len(edges) == 2:
@@ -241,7 +367,39 @@ def _get_unrolled(edges):
 
 
 def _plot_theory(ax,run,**kwargs):
-    """Support function to plot theoretical observable given ax handle"""
+    """Procedure to plot theoretical observable given axis handle
+
+    Parameters
+    ----------
+    ax : matplotlib.pyplot.Axes
+        Axes instance to plot on.
+
+    run : Run
+        Run instance to use for plotting.
+
+    **kwargs
+        - color : str
+
+        - errshift : float, default: 0
+
+        - showScaleBand : bool, default: True
+
+        - showErrors : bool, default: True
+
+        - linewidth : float, default: 2.5
+
+        - linestyle : str, default: '-'
+
+        - alpha : float, default: 0.3
+
+        - marker : str, default: ''
+
+        - ms : float, default: 20
+
+    Returns
+    -------
+    None
+    """
     def m(a):
         return list(a)+[a[-1]]
     _edges = _get_unrolled(run.edges)
@@ -250,6 +408,7 @@ def _plot_theory(ax,run,**kwargs):
     _showScaleBand = kwargs.get('showScaleBand', True)
     _showErrors = kwargs.get('showErrors', True)
     _linewidth = kwargs.get('linewidth', 2.5)
+    _linestyle = kwargs.get('linestyle', '-')
     _alpha = kwargs.get('alpha', .3)
     _marker = kwargs.get('marker', '')
     _ms = kwargs.get('ms', 20)
@@ -261,6 +420,7 @@ def _plot_theory(ax,run,**kwargs):
             marker=_marker,
             ms=_ms,
             label=kwargs.get('label'),
+            linestyle=_linestyle,
             linewidth=_linewidth)
 
     if (_showScaleBand):
@@ -294,11 +454,39 @@ def _plot_theory(ax,run,**kwargs):
 
 
 def _plot_experiment(ax,run,**kwargs):
-    """Support function to plot experimental observable"""
+    """Support function to plot experimental observable
+
+    Parameters
+    ----------
+    ax : matplotlib.pyplot.Axes
+        Axes instance to plot on.
+
+    run : Run
+        Run instance to use for plotting.
+
+    **kwargs
+        - color : str
+
+        - errshift : float, default: 0
+
+        - marker : str, default: 'o'
+
+        - ms : float, default: 3
+
+        - capsize : float, default: 5
+
+        - label : str
+
+        - linewidth : float, default: 2.5
+
+    Returns
+    -------
+    None
+    """
     _edges = np.array(_get_unrolled(run.edges))
     _xs = np.array([.5*(l+r) for l,r in zip(_edges[:-1],_edges[1:])])
     _color = kwargs.get('color')
-    _errshift = kwargs.get('errorshift',0)
+    _errshift = kwargs.get('errshift',0)
     _marker = kwargs.get('marker', 'o')
     _ms = kwargs.get('ms', 3)
     _capsize = kwargs.get('capsize', 5.)
