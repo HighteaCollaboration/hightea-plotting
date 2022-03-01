@@ -1,4 +1,3 @@
-import pathlib
 import numpy as np
 import itertools
 import warnings
@@ -18,6 +17,30 @@ def _list_histogram_setups(histograms):
 
 
 def convert_to_Run(mt: MT, file=0, **kwargs):
+    """Convert instance of MeasurementTools to Run
+
+    Parameters
+    ----------
+    mt : MeasurementTools
+
+    file : int
+        Specify file id.
+
+    **kwargs
+        - verbose : bool, default: 0
+
+        - obs : int, default: 0
+
+        - hist : int, default: 0
+
+        - setups : list, default: <all>
+
+        - withOUF : list, default: False
+
+    Returns
+    -------
+    Run
+    """
     _verbose = kwargs.get('verbose',0)
     _obs = kwargs.get('obs',0)
     _hist = kwargs.get('hist',0)
@@ -98,6 +121,20 @@ def convert_to_Run(mt: MT, file=0, **kwargs):
 
 
 def load_to_Run(xmlfile, **kwargs):
+    """Load from stripper xml file to Run
+
+    Parameters
+    ----------
+    xmlfile : str
+
+    Note
+    ----
+    All keyword arguments are passed to `convert_to_Run`.
+
+    Returns
+    -------
+    Run
+    """
     mt = MT()
     mt.loadxml(xmlfile)
     return convert_to_Run(mt, 0, **kwargs)

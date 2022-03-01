@@ -1,4 +1,4 @@
-from pathlib import Path
+from pathlib2 import Path
 import json
 import re
 import warnings
@@ -8,22 +8,59 @@ from functools import wraps
 from copy import copy, deepcopy
 
 class Run(object):
-    """
-    Run encapsulates histogram data for an observable and its metadata
+    """Container for observable results and metadata
 
-    bins:   stored as List(List(List(float)))
-            for example: [ [[0,1],[2,3]], [[1,2],[2,3]] ]
-                represents 2d observable with edges [0,1,2], [2,3]
-    edges:  stored as List(List(float))
-    values: stored as array with (X,Y) dimensions,
-            where X is the number of bins,
-            and Y is the results at different scales.
-    errors: stored similarly to values
-    info:   other information related to the run
+    Designed to be a universal container for histogram
+    and differential distribution results from hightea,
+    HEPDATA, and other sources.
+    Stores values and statistical errors as simple
+    numpy arrays, with two dimensions, corresponding
+    to the list of bins, and the calculation setups.
+
+    Attributes
+    ----------
+    values: numpy.ndarray
+        Values for histogram or differential distribution
+        across all bins and scale setups.
+        Has (X,Y) shape, where X is the number of bins,
+        and Y is the number of scale setups.
+
+    errors: numpy.ndarray
+        Statistical errors corresponding to values.
+        Same shape as values.
     """
 
     def __init__(self, file=None, bins=None, edges=None, nsetups=1, **kwargs):
-        """Initialise either by filename and kwargs, or by specifying bins or edges"""
+        """Run class constructor.
+
+        Creates and returns and instance of Run class based on provided
+        information. To parse a file or a constructed object, use `file`
+        parameters, otherwise, specify either bins or edges.
+
+        Parameters
+        ----------
+        optional file : str, dict, array
+            Path to file or an instance of an object.
+            Several formats supported: JSON, CSV, dictionary.
+
+        optional bins : list
+            Bins in the format of 3D-list: [... [ [l1,r1], [l2,r2], ...], ...]
+
+        optional edges : list
+            Bin edges in the format of 2D-list: [ ... , [x0, x1 ... ], ... ]
+
+        Returns
+        -------
+        Run
+            Instance of Run class.
+
+        Examples
+        --------
+        >>> run = Run('req.json')
+        >>> run = Run('experiment.csv')
+        >>> run = Run(dict(...))
+        >>> run = Run(edges=[[0,1,2,3,4,5],[-1,-0.5,0,0.5,1]])
+        """
         if (file):
             self.load(file,**kwargs)
         else:
@@ -38,38 +75,91 @@ class Run(object):
             self.info = {}
 
     def v(self):
-        """Get values at central scale"""
+        """Get values at central scale
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of central scale values for each bin correspondingly.
+        """
         return self.values[:,0]
 
     def e(self):
-        """Get errors at central scale"""
+        """Get errors at central scale
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of central scale errors for each bin correspondingly.
+        """
         return self.errors[:,0]
 
     def upper(self):
-        """Get upper values for scale variation"""
+        """Get upper values for scale variation
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of upper scale band values for each bin correspondingly.
+        """
         return np.amax(self.values, axis=1)
 
     def lower(self):
-        """Get lower values for scale variation"""
+        """Get lower values for scale variation
+
+        Returns
+        -------
+        numpy.ndarray
+            Array of upper scale band values for each bin correspondingly.
+        """
         return np.amin(self.values, axis=1)
 
     def dim(self):
-        """Get dimension of the run"""
+        """Get dimension of the run
+
+        Returns
+        -------
+        int
+            Number of dimensions in data.
+        """
         return len(self.edges)
 
     def dimensions(self):
-        """Get dimensions for each axis"""
+        """Get dimensions for each axis
+
+        Returns
+        -------
+        list
+            List of bin numbers for each dimension.
+        """
         return [len(x)-1 for x in self.edges]
 
     def nsetups(self):
-        """Get number of setups in run"""
+        """Get number of setups in run
+
+        Returns
+        -------
+        int
+            Number of different scale setups in the run.
+        """
         return self.values.shape[1]
 
     def update_info(self,info=None,**kwargs):
         """Update run information
 
-        Optionally pass either Run, str, or dict instance.
-        Optionally pass additional flags to modify on top of that.
+        Parameters
+        ----------
+        optional info:
+            - Run: copy metadata from passed run
+            - str: set the name of the run
+            - dict: update metadata with dictionary
+
+        **kwargs
+            Arbitrary information will be passed on to run.info dictionary.
+
+        Returns
+        -------
+        None
         """
         if isinstance(info,Run):
             self.info.update(info.info)
@@ -78,9 +168,16 @@ class Run(object):
         elif isinstance(info,dict):
             self.info.update(info)
         self.info.update(kwargs)
+        return self
 
     @property
     def info(self):
+        """Retrieve run metadata
+
+        Returns
+        -------
+        dict
+        """
         if hasattr(self,'_info'):
             return self._info
         else:
@@ -93,6 +190,12 @@ class Run(object):
 
     @property
     def name(self):
+        """Retrieve run name
+
+        Returns
+        -------
+        str
+        """
         res = self.info.get('name')
         if (res == None):
             res = self.info.get('file','')
@@ -106,6 +209,12 @@ class Run(object):
 
     @property
     def bins(self):
+        """Retrieve run bins
+
+        Returns
+        -------
+        list
+        """
         return self._bins
 
     @bins.setter
@@ -116,6 +225,12 @@ class Run(object):
 
     @property
     def edges(self):
+        """Retrieve run edges
+
+        Returns
+        -------
+        list
+        """
         return self._edges
 
     @edges.setter
@@ -126,6 +241,12 @@ class Run(object):
 
     @staticmethod
     def bin_area(bins):
+        """Calculate area for a multidimensional histogram bin.
+
+        Returns
+        -------
+        float
+        """
         a = 1
         for b in bins: a *= b[1]-b[0]
         return a
@@ -193,9 +314,19 @@ class Run(object):
 
     @loading_methods
     def load(self,request,**kwargs):
-        """Load data to Run instance.
-        Uses hightea output interface as input.
-        Can be fed with dictionary or path to JSON/YAML file.
+        """Load data to Run.
+
+        Parameters
+        ----------
+        request : dict
+            Python dictionary in the JSON format as returned by hightea server.
+
+        **kwargs
+            Any modifications to the metadata dictionary.
+
+        Returns
+        -------
+        None
         """
         hist = request.get('histogram')
         bins = []
@@ -240,12 +371,30 @@ class Run(object):
 
 
     def is_differential(self):
-        """Check if run set to be a differential distribution"""
+        """Check if run set to be a differential distribution
+
+        Looks into self.info['differential'] to see how whether run
+        is set to be a histogram or differential distribution.
+        By default, runs are treated as histograms.
+
+        Returns
+        -------
+        bool
+        """
         return self.info.get('differential',False)
 
 
     def make_histogramlike(self,ignorechecks=False):
-        """Turn differential distribution to histogram"""
+        """Turn differential distribution to histogram
+
+        Checks data is already set to be a histogram, and
+        performs normalisation over bin area if not.
+
+        Returns
+        -------
+        Run
+            Modifies and returns self.
+        """
         if not(self.is_differential()) and not(ignorechecks):
             warnings.warn("Already is histogram-like")
             return self
@@ -266,7 +415,16 @@ class Run(object):
 
 
     def make_differential(self):
-        """Turn histograms into differential distributions"""
+        """Turn histograms into differential distributions
+
+        Checks data is already set to be a differential distribution, and
+        performs normalisation over bin area if not.
+
+        Returns
+        -------
+        Run
+            Modifies and returns self.
+        """
         if self.is_differential():
             warnings.warn("Already is differential")
             return self
@@ -289,7 +447,16 @@ class Run(object):
 
 
     def __add__(self,other):
-        """Adding method"""
+        """Add runs.
+
+        Sum of two runs.
+        Requires dimensions to match exactly.
+        Errors are propagated. Metadata is discarded.
+
+        Returns
+        -------
+        Run
+        """
         res = self.minicopy()
         if (isinstance(other,Run)):
             len_self, len_other = res.values.shape[0], other.values.shape[0]
@@ -308,17 +475,41 @@ class Run(object):
 
 
     def __sub__(self,other):
-        """Subtraction method"""
+        """Subtract runs.
+
+        Sum of two runs.
+        Requires dimensions to match exactly.
+        Errors are propagated. Metadata is discarded.
+
+        Returns
+        -------
+        Run
+        """
         return self.__add__((-1.)*other)
 
 
     def __rsub__(self,other):
-        """Subtraction method"""
         return other + (-1.)*self
 
 
     def __mul__(self,other):
-        """Multiplication method"""
+        """Product of run and another run|numpy.ndarray|float bin-by-bin.
+
+        Product of run and another run|numpy.ndarray|float bin-by-bin.
+        Requires dimensions to match exactly.
+        Errors are propagated. Metadata is discarded.
+
+        Parameters
+        ----------
+        other:
+            - Run: multily bin-by-bin.
+            - numpy.ndarray: multily bin-by-bin.
+            - float: multiply by an overall coefficient.
+
+        Returns
+        -------
+        Run
+        """
         res = self.minicopy()
         if (isinstance(other,Run)):
             assert(res.values.shape[0] == other.values.shape[0])
@@ -351,7 +542,23 @@ class Run(object):
 
 
     def __truediv__(self,other):
-        """Run division method. Supports division by a constant."""
+        """Division of run over another run|numpy.ndarray|float bin-by-bin.
+
+        Division of run over another run|numpy.ndarray|float bin-by-bin.
+        Requires dimensions to match exactly.
+        Errors are propagated. Metadata is discarded.
+
+        Parameters
+        ----------
+        other:
+            - Run: divide bin-by-bin.
+            - numpy.ndarray: divide bin-by-bin.
+            - float: divide by an overall coefficient.
+
+        Returns
+        -------
+        Run
+        """
         # TODO: tackle is_differential flag consistently
         res = self.minicopy()
         warnings = np.geterr(); np.seterr(invalid='ignore')
@@ -399,9 +606,14 @@ class Run(object):
 
 
     def __eq__(self, other):
-        """Check if runs contain identical values
+        """Check if runs are equal.
 
-        All attributes are checked except additional information
+        True if all non-callable attrubutes of the class except for 'info'
+        are identical, otherwise False.
+
+        Returns
+        -------
+        bool
         """
         members = self._get_attributes()
         other_members = other._get_attributes()
@@ -415,7 +627,14 @@ class Run(object):
 
 
     def abs(self):
-        """Return run with absolute values"""
+        """Return run with absolute values
+
+        Creates a deep copy of self and modifies run name.
+
+        Returns
+        -------
+        Run
+        """
         run = self.deepcopy()
         run.values = np.abs(run.values)
         if 'name' in run.info:
@@ -424,6 +643,12 @@ class Run(object):
 
 
     def has_OUF(self):
+        """Check if contains over- and underflow bins.
+
+        Returns
+        -------
+        bool
+        """
         for d in range(self.dim()):
             if float('inf') in [abs(x) for x in self.edges[d]]:
                 return True
@@ -431,6 +656,19 @@ class Run(object):
 
 
     def remove_OUF(self,inplace=False):
+        """Remove over- and underflow bins
+
+        Returns run without over- and underflow bins given self.
+
+        Parameters
+        ----------
+        optional inplace : bool
+            If True, modify in-place and return self.
+
+        Returns
+        -------
+        Run
+        """
         run = self if inplace else self.deepcopy()
         if self.has_OUF():
             poslist = [i for i,bins in enumerate(run.bins)
@@ -442,10 +680,26 @@ class Run(object):
 
 
     def zoom(self, value=None, line=None, dim=0):
-        """Zoom into one bin at one dimension to get a lower dim slice.
+        """Get run with lower dimensional slice of the data.
 
         Specify the bin by some value that it contains or
         directly by the line number.
+        The metadata is passed on as is, with modified observable name.
+
+        Parameters
+        ----------
+        optional value : float
+            The slice will contain provided value.
+
+        optional line : int
+            The slice will be taken at this bin number.
+
+        optional dim : int
+            Dimension at which to take the slice.
+
+        Returns
+        -------
+        Run
         """
         if not(value == None):
             line = 0
@@ -472,7 +726,30 @@ class Run(object):
 
 
     def mergebins(self, values=None, pos=None):
-        """ Merge bins by values or positions """
+        """Merge bins by values or positions
+
+        Specify the values or positions for bins to be
+        merged into one.
+        The metadata is passed on as is.
+        Only 1-dim runs are supported.
+
+        Parameters
+        ----------
+        optional value : list
+            List with 2 values [l,r] is expected.
+            bins [a,b] which satisfy l <= a, b < r will be
+            merged into one bin.
+
+        optional pos : list
+            List with 2 values [l,r] is expected.
+            bins with id: l <= id < r (inclusively) will be
+            merged into one bin.
+
+        Returns
+        -------
+        Run
+        """
+        # TODO: support multidimensional run
 
         assert self.dim() == 1,\
                 "mergebins only accepts 1-dim runs"
@@ -551,7 +828,18 @@ class Run(object):
 
 
     def __getitem__(self,sliced):
-        """Get a run with selected setups"""
+        """Get a run with selected setups
+
+        Specify slice or int to return a run with selected setups.
+
+        Parameters
+        ----------
+        sliced : int, slice
+
+        Returns
+        -------
+        Run
+        """
         if isinstance(sliced,list):
             raise Exception('List not expected')
         elif isinstance(sliced,int):
@@ -575,7 +863,19 @@ class Run(object):
 
 
     def minicopy(self, copyinfo=False):
-        """Minimal copy: only data"""
+        """Minimal copy of run
+
+        Only data.
+
+        Parameters
+        ----------
+        optional copyinfo : bool
+            If True, will include metadata.
+
+        Returns
+        -------
+        Run
+        """
         run = Run()
         run.bins = deepcopy(self.bins)
         run.values = deepcopy(self.values)
@@ -591,17 +891,33 @@ class Run(object):
 
 
     def deepcopy(self):
-        """Deepcopy the whole run data"""
+        """Full (deep) copy of run
+
+        Returns
+        -------
+        Run
+        """
         return deepcopy(self)
 
 
     def flatten(self):
-        """Remove dimensions represented by single bins"""
+        """Remove dimensions represented by single bins
+
+        Returns
+        -------
+        Run
+        """
         self.edges = [x for x in self.edges if (len(x) > 2)]
 
 
-    def to_htdict(self,combined=True):
-        """Get dictionary in hightea format from this run"""
+    def to_htdict(self):
+        """Get dictionary in hightea format from run
+
+        Returns
+        -------
+        dict
+            Dictionary in hightea format.
+        """
         res = {}
         values = self.values.tolist()
         errors = self.errors.tolist()
@@ -625,7 +941,25 @@ class Run(object):
 
 
     def to_json(self,file,combined=False,verbose=True):
-        """Dump run to JSON file in hightea format"""
+        """Dump run to JSON file in hightea format
+
+        Parameters
+        ----------
+        file : str
+            Output file.
+
+        combined : bool, default: False
+            If true, will print all setups into one file.
+            Otherwise, will print each setup separately into different files.
+
+        verbose : bool, default: True
+            If true, will print all setups into one file.
+            Otherwise, will print each setup separately into different files.
+
+        Returns
+        -------
+        None
+        """
         if combined:
             with open(file, 'w') as f:
                 json.dump(self.to_htdict(combined=combined), f)
@@ -644,7 +978,23 @@ class Run(object):
 
 
     def to_csv(self,file,**kwargs):
-        """Dump run to CSV file in HEPDATA format"""
+        """Dump run to CSV file in HEPDATA format
+
+        Parameters
+        ----------
+        file : str
+            Output file.
+
+        **kwargs
+            - header: specify header for csv file
+            - all_values: print not only central value, upper and lower band values,
+              but across all setups
+            - logx: if true, bin centers are geometric mean, otherwise simple average
+
+        Returns
+        -------
+        None
+        """
         df = pd.DataFrame()
         if self.dim() == 1:
             def centers(edges,logx):
@@ -681,7 +1031,18 @@ class Run(object):
 
     @staticmethod
     def convert_to_edges(binsList):
-        """Get edges for each dimension given a list of bins"""
+        """Get edges for each dimension given a list of bins
+
+        Parameters
+        ----------
+        binsList : list
+            Bins in the format of 3D-list: [... [ [l1,r1], [l2,r2], ...], ...]
+
+        Returns
+        -------
+        list
+            2-dimensional list.
+        """
         if len(binsList[0]) == 1:
             return [[ binsList[0][0][0] ] + [ bins[0][1] for bins in binsList ]]
         ndims = len(binsList[0])
@@ -700,7 +1061,18 @@ class Run(object):
 
     @staticmethod
     def convert_to_bins(edgesList):
-        """Get full list of bins given edges for each dimension"""
+        """Get full list of bins given edges for each dimension
+
+        Parameters
+        ----------
+        edgesList : list
+            Bin edges in the format of 2D-list: [ ... , [x0, x1 ... ], ... ]
+
+        Returns
+        -------
+        list
+            3-dimensional list.
+        """
         edges = edgesList[-1]
         if (len(edgesList) == 1):
             return [ [[a,b]] for a,b in zip(edges[:-1],edges[1:]) ]
@@ -712,21 +1084,45 @@ class Run(object):
                     binsList.append(bins + newbin)
             return binsList
 
+
     # # TODO: test
     @staticmethod
     def full(dims, nsetups=1, fill_value=0):
-        """Get run with filled const values"""
+        """Get run with filled const values
+
+        Parameters
+        ----------
+        nsetups : int, default: 1
+            Number of scale setups.
+
+        fill_value : float, default: 0
+            Constant value to fill into histograms.
+
+        Returns
+        -------
+        Run
+        """
         run = Run()
         run.edges = [list(range(d+1)) for d in dims if d > 0]
         run.values = np.full((len(run.bins),nsetups),float(fill_value))
         run.errors = np.full((len(run.bins),nsetups),0.)
         return run
 
+
     @staticmethod
     def seq(dims, nsetups=1):
-        """Get a multi-dimensional run for testing purposes
+        """Get multidimensional run for testing
 
-        Fills values with sequential values.
+        Values are taken from the natural sequence.
+
+        Parameters
+        ----------
+        nsetups : int, default: 1
+            Number of scale setups.
+
+        Returns
+        -------
+        Run
         """
         run = Run()
         run.edges = [list(range(d+1)) for d in dims if d > 0]
@@ -735,9 +1131,27 @@ class Run(object):
         run.errors = run.values / 10
         return run
 
+
     @staticmethod
-    def random(dims, nsetups=1):
-        """Get random multi-dimensional run for testing purposes"""
+    def random(dims, nsetups=1, seed=None):
+        """Get multidimensional run for testing
+
+        Values are generated randomly.
+
+        Parameters
+        ----------
+        optional nsetups : int, default: 1
+            Number of scale setups.
+
+        optional seed : int, default: None
+            Set seed in numpy.random.
+
+        Returns
+        -------
+        Run
+        """
+        if seed:
+            np.random.seed(seed)
         run = Run()
         run.edges = [list(range(d+1)) for d in dims if d > 0]
         run.values = np.random.rand(len(run.bins),nsetups)
@@ -745,14 +1159,15 @@ class Run(object):
         return run
 
 
-    # TODO:
-    def apply(**tweaks):
-        """Some specific operations to apply to run"""
-        pass
-
-
     # TODO: nice printout
     def __repr__(self):
+        """Full printout for the run.
+
+        Returns
+        -------
+        str
+            String containing all attributes.
+        """
         desc = ""
         for m in self._get_attributes():
             desc += f" '{m}': {getattr(self,m)}\n"
