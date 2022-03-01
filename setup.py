@@ -19,7 +19,7 @@ setup(
         '': 'src',
     },
     install_requires = [
-        "pathlib",
+        "pathlib2",
         "matplotlib",
         "numpy",
         "pandas",
