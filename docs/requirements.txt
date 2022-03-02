@@ -1,0 +1,6 @@
+numpy
+matplotlib
+recommonmark
+pathlib2
+pandas
+more-itertools

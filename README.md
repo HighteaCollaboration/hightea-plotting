@@ -2,6 +2,8 @@
 
 Plotting routines for `hightea` library.
 
+Documentation is available [online](https://hightea-plotting.readthedocs.io/en/latest/).
+
 Simplest usage in python code:
 ```
 import hightea.plotting as hyt
