@@ -250,6 +250,9 @@ def plot_unrolled(ax, *runs, **kwargs):
         - legend : bool
             If True, show legend.
 
+        - finetune : dict
+            Additional steering parameters.
+
     Examples
     --------
     >>> # Example of a more involved plot using underlying routines
@@ -284,6 +287,7 @@ def plot_unrolled(ax, *runs, **kwargs):
     _showGrid = kwargs.get('grid', True)
     _colorscheme = kwargs.get('colorscheme',colorscheme)
     _showLegend = kwargs.get('legend', True)
+    _finetune = kwargs.get('finetune', {})
 
     # plot each run separately
     for i,run in enumerate(runs):
@@ -337,7 +341,9 @@ def plot_unrolled(ax, *runs, **kwargs):
                         ls=':', color='gray')
 
     if (_showGrid):
-        ax.grid(lw=0.2, c='gray')
+        gridParams = dict(lw=0.2, alpha=1, c='gray')
+        gridParams.update(_finetune.get('grid',{}))
+        ax.grid(**gridParams)
 
     if (_showLegend):
         ax.legend(loc=kwargs.get('legend_loc','upper right'))
