@@ -251,7 +251,9 @@ def plot_unrolled(ax, *runs, **kwargs):
             If True, show legend.
 
         - finetune : dict
-            Additional steering parameters.
+            Passes parameters (values) directly to plotting functions (keys).
+            Passes on to underlying local plotting routines.
+            Affects: `Axes.grid`.
 
     Examples
     --------
@@ -268,7 +270,9 @@ def plot_unrolled(ax, *runs, **kwargs):
     >>>         (runs['lo']/runs['data'].v())[0].update_info('LO (central scale)'),
     >>>         (runs['data']/runs['data'].v()).update_info(name='NLO', experiment=True),
     >>>         (runs['nnlo']/runs['nlo'].v()).update_info('NNLO'),
-    >>>     ])
+    >>>     ],
+    >>>    finetune=dict(grid={"alpha":.3}),
+    >>> )
     >>> ax.set_ylabel('Ratio to data')
     >>> plt.show()
 
@@ -341,9 +345,12 @@ def plot_unrolled(ax, *runs, **kwargs):
                         ls=':', color='gray')
 
     if (_showGrid):
-        gridParams = dict(lw=0.2, alpha=1, c='gray')
-        gridParams.update(_finetune.get('grid',{}))
-        ax.grid(**gridParams)
+        ax.grid(**{
+                    'lw': 0.2,
+                    'alpha': 1,
+                    'c': 'gray',
+                    **_finetune.get('grid',{})
+                })
 
     if (_showLegend):
         ax.legend(loc=kwargs.get('legend_loc','upper right'))
@@ -402,6 +409,10 @@ def _plot_theory(ax,run,**kwargs):
 
         - ms : float, default: 20
 
+        - finetune : dict
+            Passes parameters (values) directly to matplotlib functions (keys).
+            Affects: `Axes.fill_between`.
+
     Returns
     -------
     None
@@ -418,6 +429,7 @@ def _plot_theory(ax,run,**kwargs):
     _alpha = kwargs.get('alpha', .3)
     _marker = kwargs.get('marker', '')
     _ms = kwargs.get('ms', 20)
+    _finetune = kwargs.get('finetune', {})
 
     ax.step(_edges,
             m(run.v()),
@@ -435,11 +447,13 @@ def _plot_theory(ax,run,**kwargs):
             ax.fill_between(_edges,
                             m(run.lower()),
                             m(run.upper()),
-                            step='post',
-                            linewidth=0.0,
-                            color=_color,
-                            alpha=_alpha)
-
+                            **{
+                                'step': 'post',
+                                'linewidth': 0.0,
+                                'color': _color,
+                                'alpha': _alpha,
+                                **_finetune.get('fill_between', {}),
+                            })
         else:
             for y in m(run.lower()), m(run.upper()):
                 ax.step(_edges, y,
