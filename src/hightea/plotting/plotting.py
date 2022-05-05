@@ -38,7 +38,7 @@ def _convert_args_to_Runs(plotfunc):
                     _convert_to_runs(runs, o)
             else:
                 if isinstance(obj,str) or isinstance(obj,dict):
-                    runs.append(Run(obj))
+                    runs.append(Run(obj, **_select_keys(kwargs,'nhist')))
                 else:
                     runs.append(obj)
         for a in args:

@@ -30,7 +30,8 @@ class Run(object):
         Same shape as values.
     """
 
-    def __init__(self, file=None, bins=None, edges=None, nsetups=1, **kwargs):
+    def __init__(self, file=None, bins=None, edges=None, nhist=0,
+                nsetups=1, **kwargs):
         """Run class constructor.
 
         Creates and returns and instance of Run class based on provided
@@ -62,7 +63,7 @@ class Run(object):
         >>> run = Run(edges=[[0,1,2,3,4,5],[-1,-0.5,0,0.5,1]])
         """
         if (file):
-            self.load(file,**kwargs)
+            self.load(file,nhist=nhist,**kwargs)
         else:
             if (bins):
                 self.bins = bins
@@ -313,7 +314,7 @@ class Run(object):
         return inner
 
     @loading_methods
-    def load(self,request,**kwargs):
+    def load(self,request,nhist=0,**kwargs):
         """Load data to Run.
 
         Parameters
@@ -328,7 +329,7 @@ class Run(object):
         -------
         None
         """
-        hist = request.get('histogram')
+        hist = request.get('histogram', request.get('histograms')[nhist])
         bins = []
         values = []
         errors = []
@@ -354,6 +355,17 @@ class Run(object):
         # retrieve info
         self.info = dict(request.get('info',{}))
         self.info['file'] = request.get('file')
+
+        # manipulating data from original request
+        if req := self.info.get('request'):
+            if type(req) == str:
+                req = json.loads(req)
+                self.info['request'] = req
+            if obslist := req.get('observables'):
+                try:
+                    self.info['obs'] = ' * '.join([x.get('variable') for x in obslist[nhist]])
+                except IndexError:
+                    warnings.warn("Error when retrieving observable name")
 
         if 'fiducial_mean' in request:
             xsec = [request.get('fiducial_mean')]
