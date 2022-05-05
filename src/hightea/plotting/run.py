@@ -977,7 +977,7 @@ class Run(object):
 
 
 
-    def to_csv(self,file,**kwargs):
+    def to_csv(self,file,header=None,**kwargs):
         """Dump run to CSV file in HEPDATA format
 
         Parameters
@@ -1018,6 +1018,7 @@ class Run(object):
             raise Exception("Multi dimensional data dump to CSV not supported yet")
 
         with open(file, 'w') as f:
+            if header: f.write(f'{header}\n')
             if 'obs' in self.info: f.write(f'# Observable: {self.info["obs"]}\n')
             if 'process' in self.info: f.write(f'# Process: {self.info["process"]}\n')
             if self.info.get('variation',[]):
