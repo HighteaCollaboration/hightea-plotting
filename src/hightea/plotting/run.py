@@ -329,7 +329,8 @@ class Run(object):
         -------
         None
         """
-        hist = request.get('histogram', request.get('histograms')[nhist])
+        hist = request.get('histogram')
+        if not hist: request.get('histograms')[nhist]
         assert len(hist) > 0, "Histogram is empty"
         bins = []
         values = []
