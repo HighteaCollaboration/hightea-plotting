@@ -382,11 +382,13 @@ class Run(object):
         self.info['file'] = request.get('file')
 
         # manipulating data from original request
-        if req := self.info.get('request'):
+        if 'request' in self.info:
+            req = self.info.get('request')
             if type(req) == str:
                 req = json.loads(req)
                 self.info['request'] = req
-            if obslist := req.get('observables'):
+            if 'observables' in req:
+                obslist = req.get('observables')
                 try:
                     self.info['obs'] = ' * '.join([x.get('variable') for x in obslist[nhist]])
                 except IndexError:
@@ -395,7 +397,8 @@ class Run(object):
         if 'fiducial_mean' in request:
             xsec = [request.get('fiducial_mean')]
             if not(isinstance(xsec[0],list)): xsec[0] = [xsec[0]]
-            if syserr := request.get('fiducial_sys_error'):
+            if 'fiducial_sys_error' in request:
+                syserr = request.get('fiducial_sys_error')
                 xsec[0].append(xsec[0][0] - np.sqrt(sum([e.get('neg',0)**2 for e in syserr])))
                 xsec[0].append(xsec[0][0] + np.sqrt(sum([e.get('pos',0)**2 for e in syserr])))
 
