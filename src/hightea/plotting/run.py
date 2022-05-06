@@ -30,7 +30,8 @@ class Run(object):
         Same shape as values.
     """
 
-    def __init__(self, file=None, bins=None, edges=None, nsetups=1, **kwargs):
+    def __init__(self, file=None, bins=None, edges=None, nhist=0,
+                nsetups=1, **kwargs):
         """Run class constructor.
 
         Creates and returns and instance of Run class based on provided
@@ -62,7 +63,7 @@ class Run(object):
         >>> run = Run(edges=[[0,1,2,3,4,5],[-1,-0.5,0,0.5,1]])
         """
         if (file):
-            self.load(file,**kwargs)
+            self.load(file,nhist=nhist,**kwargs)
         else:
             if (bins):
                 self.bins = bins
@@ -257,7 +258,9 @@ class Run(object):
         def inner(self,request,**kwargs):
             if (isinstance(request,dict)):
                 load(self,request,**kwargs)
-            elif (isinstance(request,str) or isinstance(request,Path)):
+            else:
+                # assumes path and coverts to string
+                request = str(request)
                 ext = '.'+kwargs.get('ext',Path(request).suffix[1:])
 
                 if (ext) == '.json':
@@ -313,7 +316,7 @@ class Run(object):
         return inner
 
     @loading_methods
-    def load(self,request,**kwargs):
+    def load(self,request,nhist=0,**kwargs):
         """Load data to Run.
 
         Parameters
@@ -329,13 +332,22 @@ class Run(object):
         None
         """
         hist = request.get('histogram')
+        if not hist:
+            try:
+                hist = request.get('histograms')[nhist]
+            except IndexError as e:
+              print(f'Histogram #{nhist} not found', e)
+
+        assert len(hist) > 0, "Histogram is empty"
         bins = []
         values = []
         errors = []
+        syserrs = []
         for entry in hist:
             bins.append(entry.get('edges',[[]]))
             values.append(entry.get('mean',[]))
             errors.append(entry.get('error',[]))
+            syserrs.append(entry.get('sys_error',[]))
 
         # two possible bin formats
         if isinstance(bins[0][0], dict):
@@ -346,19 +358,51 @@ class Run(object):
         if (isinstance(values[0],list) or isinstance(values[0],np.ndarray)):
             self.values = np.array(values)
             self.errors = np.array(errors)
+            if len(syserrs[0]) > 0:
+                warnings.warn("sys_errors are ignored since values are passed as arrays")
         else:
-            # warnings.warn("Attempting reshaping input means and errors...")
-            self.values = np.expand_dims(np.array(values),1)
-            self.errors = np.expand_dims(np.array(errors),1)
+            # create 3-setup run if sys-errors are passed
+            if len(syserrs[0]) > 0:
+                pos_edge = np.zeros(len(values))
+                neg_edge = np.zeros(len(values))
+                for i, (v,syserr) in enumerate(zip(values, syserrs)):
+                    neg_edge[i] = v - np.sqrt(sum([e.get('neg',0)**2 for e in syserr]))
+                    pos_edge[i] = v + np.sqrt(sum([e.get('pos',0)**2 for e in syserr]))
+
+                self.values = np.transpose(np.array([np.array(values)]
+                                                  + [neg_edge]
+                                                  + [pos_edge]))
+                self.errors = np.transpose(np.array(3*[errors]))
+            else:
+                self.values = np.expand_dims(np.array(values),1)
+                self.errors = np.expand_dims(np.array(errors),1)
 
         # retrieve info
         self.info = dict(request.get('info',{}))
         self.info['file'] = request.get('file')
 
+        # manipulating data from original request
+        if req := self.info.get('request'):
+            if type(req) == str:
+                req = json.loads(req)
+                self.info['request'] = req
+            if obslist := req.get('observables'):
+                try:
+                    self.info['obs'] = ' * '.join([x.get('variable') for x in obslist[nhist]])
+                except IndexError:
+                    warnings.warn("Error when retrieving observable name")
+
         if 'fiducial_mean' in request:
             xsec = [request.get('fiducial_mean')]
-            if not(isinstance(xsec[0],list)): xsec = [xsec]
+            if not(isinstance(xsec[0],list)): xsec[0] = [xsec[0]]
+            if syserr := request.get('fiducial_sys_error'):
+                xsec[0].append(xsec[0][0] - np.sqrt(sum([e.get('neg',0)**2 for e in syserr])))
+                xsec[0].append(xsec[0][0] + np.sqrt(sum([e.get('pos',0)**2 for e in syserr])))
+
             xsec.append(request.get('fiducial_error', [0.]*len(xsec[0])))
+            if not(isinstance(xsec[1],list)): xsec[1] = [xsec[1]]
+            if len(xsec[0]) > 1 and len(xsec[1]) == 1: xsec[1] *= len(xsec[0])
+
             xsec = np.array(xsec,dtype=object)
             self.xsec = np.transpose(xsec)
 
@@ -962,7 +1006,7 @@ class Run(object):
         """
         if combined:
             with open(file, 'w') as f:
-                json.dump(self.to_htdict(combined=combined), f)
+                json.dump(self.to_htdict(), f)
                 if verbose:
                     print(f'Saved to "{file}"')
         else:
@@ -971,7 +1015,7 @@ class Run(object):
                 numbered_file = str(basefile.parent / basefile.stem) \
                                 + f'-{i}{basefile.suffix}'
                 with open(numbered_file, 'w') as f:
-                    json.dump(self[i].to_htdict(combined=combined), f)
+                    json.dump(self[i].to_htdict(), f)
                     if verbose:
                         print(f'Saved to "{numbered_file}"')
 
