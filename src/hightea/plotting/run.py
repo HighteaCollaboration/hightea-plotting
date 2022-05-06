@@ -258,7 +258,9 @@ class Run(object):
         def inner(self,request,**kwargs):
             if (isinstance(request,dict)):
                 load(self,request,**kwargs)
-            elif (isinstance(request,str) or isinstance(request,Path)):
+            else:
+                # assumes path and coverts to string
+                request = str(request)
                 ext = '.'+kwargs.get('ext',Path(request).suffix[1:])
 
                 if (ext) == '.json':
@@ -330,7 +332,12 @@ class Run(object):
         None
         """
         hist = request.get('histogram')
-        if not hist: request.get('histograms')[nhist]
+        if not hist:
+            try:
+                request.get('histograms')[nhist]
+            except IndexError as e:
+              print(f'Histogram #{nhist} not found', e)
+
         assert len(hist) > 0, "Histogram is empty"
         bins = []
         values = []
@@ -999,7 +1006,7 @@ class Run(object):
         """
         if combined:
             with open(file, 'w') as f:
-                json.dump(self.to_htdict(combined=combined), f)
+                json.dump(self.to_htdict(), f)
                 if verbose:
                     print(f'Saved to "{file}"')
         else:
@@ -1008,7 +1015,7 @@ class Run(object):
                 numbered_file = str(basefile.parent / basefile.stem) \
                                 + f'-{i}{basefile.suffix}'
                 with open(numbered_file, 'w') as f:
-                    json.dump(self[i].to_htdict(combined=combined), f)
+                    json.dump(self[i].to_htdict(), f)
                     if verbose:
                         print(f'Saved to "{numbered_file}"')
 
