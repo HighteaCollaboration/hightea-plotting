@@ -334,7 +334,7 @@ class Run(object):
         hist = request.get('histogram')
         if not hist:
             try:
-                request.get('histograms')[nhist]
+                hist = request.get('histograms')[nhist]
             except IndexError as e:
               print(f'Histogram #{nhist} not found', e)
 
