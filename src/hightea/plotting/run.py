@@ -330,13 +330,16 @@ class Run(object):
         None
         """
         hist = request.get('histogram', request.get('histograms')[nhist])
+        assert len(hist) > 0, "Histogram is empty"
         bins = []
         values = []
         errors = []
+        syserrs = []
         for entry in hist:
             bins.append(entry.get('edges',[[]]))
             values.append(entry.get('mean',[]))
             errors.append(entry.get('error',[]))
+            syserrs.append(entry.get('sys_error',[]))
 
         # two possible bin formats
         if isinstance(bins[0][0], dict):
@@ -347,10 +350,23 @@ class Run(object):
         if (isinstance(values[0],list) or isinstance(values[0],np.ndarray)):
             self.values = np.array(values)
             self.errors = np.array(errors)
+            if len(syserrs[0]) > 0:
+                warnings.warn("sys_errors are ignored since values are passed as arrays")
         else:
-            # warnings.warn("Attempting reshaping input means and errors...")
-            self.values = np.expand_dims(np.array(values),1)
-            self.errors = np.expand_dims(np.array(errors),1)
+            # create 3-setup run if sys-errors are passed
+            if len(syserrs[0]) > 0:
+                pos_edge = np.zeros(len(values))
+                neg_edge = np.zeros(len(values))
+                for i, (v,syserr) in enumerate(zip(values, syserrs)):
+                    pos_edge[i] = v + np.sqrt(sum([e.get('pos',0)**2 for e in syserr]))
+                    neg_edge[i] = v - np.sqrt(sum([e.get('neg',0)**2 for e in syserr]))
+
+                self.values = np.transpose(np.array([np.array(values)]
+                                            + [neg_edge] + [pos_edge]))
+                self.errors = np.transpose(np.array(3*[errors]))
+            else:
+                self.values = np.expand_dims(np.array(values),1)
+                self.errors = np.expand_dims(np.array(errors),1)
 
         # retrieve info
         self.info = dict(request.get('info',{}))
