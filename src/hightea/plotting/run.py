@@ -358,11 +358,12 @@ class Run(object):
                 pos_edge = np.zeros(len(values))
                 neg_edge = np.zeros(len(values))
                 for i, (v,syserr) in enumerate(zip(values, syserrs)):
-                    pos_edge[i] = v + np.sqrt(sum([e.get('pos',0)**2 for e in syserr]))
                     neg_edge[i] = v - np.sqrt(sum([e.get('neg',0)**2 for e in syserr]))
+                    pos_edge[i] = v + np.sqrt(sum([e.get('pos',0)**2 for e in syserr]))
 
                 self.values = np.transpose(np.array([np.array(values)]
-                                            + [neg_edge] + [pos_edge]))
+                                                  + [neg_edge]
+                                                  + [pos_edge]))
                 self.errors = np.transpose(np.array(3*[errors]))
             else:
                 self.values = np.expand_dims(np.array(values),1)
@@ -385,8 +386,15 @@ class Run(object):
 
         if 'fiducial_mean' in request:
             xsec = [request.get('fiducial_mean')]
-            if not(isinstance(xsec[0],list)): xsec = [xsec]
+            if not(isinstance(xsec[0],list)): xsec[0] = [xsec[0]]
+            if syserr := request.get('fiducial_sys_error'):
+                xsec[0].append(xsec[0][0] - np.sqrt(sum([e.get('neg',0)**2 for e in syserr])))
+                xsec[0].append(xsec[0][0] + np.sqrt(sum([e.get('pos',0)**2 for e in syserr])))
+
             xsec.append(request.get('fiducial_error', [0.]*len(xsec[0])))
+            if not(isinstance(xsec[1],list)): xsec[1] = [xsec[1]]
+            if len(xsec[0]) > 1 and len(xsec[1]) == 1: xsec[1] *= len(xsec[0])
+
             xsec = np.array(xsec,dtype=object)
             self.xsec = np.transpose(xsec)
 
