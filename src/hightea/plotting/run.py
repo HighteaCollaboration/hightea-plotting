@@ -331,19 +331,17 @@ class Run(object):
         -------
         None
         """
-        hist = request.get('histogram')
-        if not hist:
-            try:
-                hist = request.get('histograms')[nhist]
-            except IndexError as e:
-              print(f'Histogram #{nhist} not found', e)
+        try:
+            hist = request.get('histograms')[nhist]
+        except IndexError as e:
+          print(f'Histogram #{nhist} not found', e)
 
         assert len(hist) > 0, "Histogram is empty"
         bins = []
         values = []
         errors = []
         syserrs = []
-        for entry in hist:
+        for entry in hist['binning']:
             bins.append(entry.get('edges',[[]]))
             values.append(entry.get('mean',[]))
             errors.append(entry.get('error',[]))
@@ -381,8 +379,10 @@ class Run(object):
         self.info = dict(request.get('info',{}))
         self.info['file'] = request.get('file')
 
-        # manipulating data from original request
-        if 'request' in self.info:
+        # test if observable name is present
+        # otherwise manipulating data from original request
+        self.info['obs'] = hist.get('name',None)
+        if self.info['obs'] == None and 'request' in self.info:
             req = self.info.get('request')
             if type(req) == str:
                 req = json.loads(req)
@@ -390,7 +390,8 @@ class Run(object):
             if 'observables' in req:
                 obslist = req.get('observables')
                 try:
-                    self.info['obs'] = ' * '.join([x.get('variable') for x in obslist[nhist]])
+                    # test for the appearance of name
+                    self.info['obs'] = ' * '.join([x.get('variable') for x in obslist[nhist]['binning']])
                 except IndexError:
                     warnings.warn("Error when retrieving observable name")
 
