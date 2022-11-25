@@ -293,18 +293,24 @@ class Run(object):
                     else:
                         raise Exception('Supported cases: 6 or 8 columns.')
 
-                    data = {'histogram': [
+                    data = {'histograms': [
                               {
-                                'edges': [{
-                                            'min_value':b[0],
-                                            'max_value':b[1],
-                                          }
-                                          for i,b in enumerate(bb)],
-                                'mean': v,
-                                'error': e,
-                              }
-                              for bb,v,e in zip(bins,vals,errs)
-                            ]}
+                                'name':None,
+                                'binning':[
+                                   {
+                                     'edges': [{
+                                                 'min_value':b[0],
+                                                 'max_value':b[1],
+                                               }
+                                               for i,b in enumerate(bb)],
+                                     'mean': v,
+                                     'error': e,
+                                   }
+                                   for bb,v,e in zip(bins,vals,errs)
+                                   ]
+                             }
+                           ]
+                          }
                     data['info'] = {'file': request,
                                     'differential': True,
                                     'experiment': True}
