@@ -135,7 +135,7 @@ def plot(*runs, **kwargs):
     _latex = kwargs.get('latex', None)
     _showRatio = not(_ratio == None)
     _showSetup = kwargs.get('show_setup', None)
-    _info = _get_info(runs, *'obs binning process variation'.split())
+    _info = _get_info(runs, *'obs process variation'.split())
 
     if not _latex is None:
         if _latex:
@@ -153,7 +153,6 @@ def plot(*runs, **kwargs):
             _fig = Figure(**_select_keys(kwargs,'figsize'))
 
     obs = _info.get('obs','')
-    binning = _info.get('binning',[])
 
     if (_logscale == None):
         for k in 'transverse energy mass'.split():
@@ -193,8 +192,8 @@ def plot(*runs, **kwargs):
             if ('y2' in _lim): ax2.set_ylim(_lim.get('y2'))
         _fig.set_tight_layout(True)
 
-    if (binning):
-        obslabel = binning[0].get('variable')
+    if (obs):
+        obslabel = obs
         ax1.set_xlabel(obslabel)
         # TODO: put labels on top of the picture for higher-dim plots
         sigmaletter = 'σ' if not _latex else '$\\sigma$'
