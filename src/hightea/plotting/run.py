@@ -1,4 +1,4 @@
-from pathlib2 import Path
+from pathlib import Path
 import json
 import re
 import warnings
