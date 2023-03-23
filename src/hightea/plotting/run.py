@@ -791,6 +791,26 @@ class Run(object):
         return newrun
 
 
+    def transpose(self):
+        if (self.dim() == 1):
+            return self
+        if (self.dim() != 2):
+            raise Exception("Transposing runs with ndim>2 not implemented")
+
+        ni, nj = self.dimensions()
+        vals = []
+        errs = []
+        for j in range(nj):
+            for i in range(ni):
+                vals.append(self.values[i*nj + j])
+                errs.append(self.errors[i*nj + j])
+
+        self.values = np.array(vals)
+        self.errors = np.array(errs)
+        self.edges = [self.edges[1], self.edges[0]]
+        return self
+
+
     def mergebins(self, values=None, pos=None):
         """Merge bins by values or positions
 
