@@ -524,6 +524,12 @@ class Run(object):
                 raise Exception(f"Incompatible run shapes: {len_self}, {len_other}")
             res.values += other.values
             res.errors = np.sqrt(res.errors**2 + other.errors**2)
+
+            if hasattr(self,'xsec') and hasattr(other, 'xsec'):
+                res.xsec = self.xsec.copy()
+                res.xsec[0,:] += other.xsec[0,:]
+                res.xsec[1,:] = np.sqrt(res.xsec[1,:]**2 + other.xsec[1,:]**2)
+
         elif isinstance(other,float) or isinstance(other,int):
             res.values += other
         else:
