@@ -999,8 +999,8 @@ class Run(object):
                             for bb,v,e in zip(self.bins, values, errors)
         ]
         if hasattr(self,'xsec'):
-            res['fiducial_mean'] = self.xsec[:,0]
-            res['fiducial_error'] = self.xsec[:,1]
+            res['fiducial_mean'] = self.xsec[0,:]
+            res['fiducial_error'] = self.xsec[1,:]
 
         res['info'] = self.info
         return res
