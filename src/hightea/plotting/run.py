@@ -174,7 +174,7 @@ class Run(object):
 
         Returns
         -------
-        None
+        Self
         """
         if isinstance(info,Run):
             self.info.update(info.info)
