@@ -598,7 +598,7 @@ class Run(object):
                     res.errors *= other
             else:
                 raise Exception(f"ndarray shape: {other.shape} "
-                                + "incompatible to run {self.dimensions}")
+                                + f"incompatible to run shape: {self.dimensions()}")
         else:
             raise Exception("Mul operation failed")
         return res
@@ -651,7 +651,7 @@ class Run(object):
                     res.errors /= other
             else:
                 raise Exception(f"ndarray shape: {other.shape} "
-                                + "incompatible to run {self.dimensions}")
+                                + f"incompatible to run shape: {self.dimensions()}")
         else:
             raise Exception("Div operation failed")
         np.seterr(**warnings)
