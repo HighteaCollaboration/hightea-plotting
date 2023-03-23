@@ -420,8 +420,7 @@ class Run(object):
             if not(isinstance(xsec[1],list)): xsec[1] = [xsec[1]]
             if len(xsec[0]) > 1 and len(xsec[1]) == 1: xsec[1] *= len(xsec[0])
 
-            xsec = np.array(xsec,dtype=object)
-            self.xsec = np.transpose(xsec)
+            self.xsec = np.array(xsec,dtype=float)
 
         # Final corrections
         for key,value in kwargs.items():
