@@ -277,21 +277,35 @@ class Run(object):
 
                     edges = [[df.iat[0,1]] + list(df.iloc[:,2])]
                     bins = Run.convert_to_bins(edges)
-                    if (len(df.columns) == 6):
+                    if (len(df.columns) < 6):
+                        raise Exception(f'Bad number of columns in CSV file')
+                    elif len(df.columns) == 6:
                         vals = df.iloc[:,3:6].values
                         vals[:,1] += vals[:,0]
                         vals[:,2] += vals[:,0]
                         errs = np.zeros(vals.shape)
-                    elif (len(df.columns) == 8):
-                        vals = df.iloc[:,[3,6,7]].values
-                        vals[:,1] += vals[:,0]
-                        vals[:,2] += vals[:,0]
-                        errs = np.zeros(vals.shape)
-                        errs[:,0] = (df.iloc[:,4].values - df.iloc[:,5].values)/2
-                        errs[:,1] = errs[:,0]
-                        errs[:,2] = errs[:,0]
+                    elif len(df.columns) > 6:
+                        assert len(df.columns) > 7, 'Bad number of columns in CSV file'
+                        if ((len(df.columns) > 7) and \
+                            ((df.columns[6] <= 0).all() or (df.columns[7] <= 0).all())):
+                            # interpret as combination of sys errors
+                            vals = df.iloc[:,[3,6,7]].values
+                            for i in range(8, len(df.columns)):
+                                vals[:,1:] += df.iloc[:,[i,i+1]].values
+                            vals[:,1] += vals[:,0]
+                            vals[:,2] += vals[:,0]
+                            errs = np.zeros(vals.shape)
+                            errs[:,0] = (df.iloc[:,4].values - df.iloc[:,5].values)/2
+                            errs[:,1] = errs[:,0]
+                            errs[:,2] = errs[:,0]
+                        else:
+                            vals = df.iloc[:,6:].values
+                            errs = np.zeros(vals.shape)
+                            errs[:,0] = (df.iloc[:,4].values - df.iloc[:,5].values)/2
+                            errs[:,1] = errs[:,0]
+                            errs[:,2] = errs[:,0]
                     else:
-                        raise Exception('Supported cases: 6 or 8 columns.')
+                        raise Exception(f'Meaning of {len(df.columns)} columns in CSV file is unclear.')
 
                     data = {'histogram': [
                               {
