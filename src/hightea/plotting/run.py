@@ -145,6 +145,20 @@ class Run(object):
         """
         return self.values.shape[1]
 
+    def label(self, name):
+        """Provide name for the current run
+
+        Parameters
+        ----------
+        name : string
+            New run name
+
+        Returns
+        -------
+        Self
+        """
+        return self.update_info(name)
+
     def update_info(self,info=None,**kwargs):
         """Update run information
 
