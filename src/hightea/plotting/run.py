@@ -291,7 +291,9 @@ class Run(object):
 
                     edges = [[df.iat[0,1]] + list(df.iloc[:,2])]
                     bins = Run.convert_to_bins(edges)
-                    if (len(df.columns) == 6):
+                    if (len(df.columns) < 6):
+                        raise Exception(f'Bad number of columns in CSV file')
+                    elif len(df.columns) == 6:
                         vals = df.iloc[:,3:6].values
                         vals[:,1] += vals[:,0]
                         vals[:,2] += vals[:,0]
@@ -305,7 +307,7 @@ class Run(object):
                         errs[:,1] = errs[:,0]
                         errs[:,2] = errs[:,0]
                     else:
-                        raise Exception('Supported cases: 6 or 8 columns.')
+                        raise Exception(f'Meaning of {len(df.columns)} columns in CSV file is unclear.')
 
                     data = {'histograms': [
                               {
@@ -427,8 +429,7 @@ class Run(object):
             if not(isinstance(xsec[1],list)): xsec[1] = [xsec[1]]
             if len(xsec[0]) > 1 and len(xsec[1]) == 1: xsec[1] *= len(xsec[0])
 
-            xsec = np.array(xsec,dtype=object)
-            self.xsec = np.transpose(xsec)
+            self.xsec = np.array(xsec,dtype=float)
 
         # Final corrections
         for key,value in kwargs.items():
@@ -532,6 +533,12 @@ class Run(object):
                 raise Exception(f"Incompatible run shapes: {len_self}, {len_other}")
             res.values += other.values
             res.errors = np.sqrt(res.errors**2 + other.errors**2)
+
+            if hasattr(self,'xsec') and hasattr(other, 'xsec'):
+                res.xsec = self.xsec.copy()
+                res.xsec[0,:] += other.xsec[0,:]
+                res.xsec[1,:] = np.sqrt(res.xsec[1,:]**2 + other.xsec[1,:]**2)
+
         elif isinstance(other,float) or isinstance(other,int):
             res.values += other
         else:
@@ -600,7 +607,7 @@ class Run(object):
                     res.errors *= other
             else:
                 raise Exception(f"ndarray shape: {other.shape} "
-                                + "incompatible to run {self.dimensions}")
+                                + f"incompatible to run shape: {self.dimensions()}")
         else:
             raise Exception("Mul operation failed")
         return res
@@ -653,7 +660,7 @@ class Run(object):
                     res.errors /= other
             else:
                 raise Exception(f"ndarray shape: {other.shape} "
-                                + "incompatible to run {self.dimensions}")
+                                + f"incompatible to run shape: {self.dimensions()}")
         else:
             raise Exception("Div operation failed")
         np.seterr(**warnings)
@@ -791,6 +798,26 @@ class Run(object):
             else:
                 newrun.info['obs'] += f' [line={line}]'
         return newrun
+
+
+    def transpose(self):
+        if (self.dim() == 1):
+            return self
+        if (self.dim() != 2):
+            raise Exception("Transposing runs with ndim>2 not implemented")
+
+        ni, nj = self.dimensions()
+        vals = []
+        errs = []
+        for j in range(nj):
+            for i in range(ni):
+                vals.append(self.values[i*nj + j])
+                errs.append(self.errors[i*nj + j])
+
+        self.values = np.array(vals)
+        self.errors = np.array(errs)
+        self.edges = [self.edges[1], self.edges[0]]
+        return self
 
 
     def mergebins(self, values=None, pos=None):
@@ -1001,8 +1028,8 @@ class Run(object):
                             for bb,v,e in zip(self.bins, values, errors)
         ]
         if hasattr(self,'xsec'):
-            res['fiducial_mean'] = self.xsec[:,0]
-            res['fiducial_error'] = self.xsec[:,1]
+            res['fiducial_mean'] = self.xsec[0,:]
+            res['fiducial_error'] = self.xsec[1,:]
 
         res['info'] = self.info
         return res

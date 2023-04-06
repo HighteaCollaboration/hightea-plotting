@@ -127,6 +127,7 @@ def plot(*runs, **kwargs):
         Figure which used in plotting to allow further manipulations.
     """
     _fig = kwargs.get('figure')
+    _axes = kwargs.get('axes')
     _show = kwargs.get('show', True)
     _output = kwargs.get('output', None)
     _ratio = kwargs.get('ratio', None)
@@ -135,7 +136,7 @@ def plot(*runs, **kwargs):
     _latex = kwargs.get('latex', None)
     _showRatio = not(_ratio == None)
     _showSetup = kwargs.get('show_setup', None)
-    _info = _get_info(runs, *'obs process variation'.split())
+    _info = _get_info(runs, *'obs binning process variation generation_params'.split())
 
     if not _latex is None:
         if _latex:
@@ -146,7 +147,7 @@ def plot(*runs, **kwargs):
         else:
             plt.style.use('default')
 
-    if _fig is None:
+    if _fig is None and _axes is None:
         if _show:
             _fig = plt.figure(**_select_keys(kwargs,'figsize'))
         else:
@@ -160,7 +161,7 @@ def plot(*runs, **kwargs):
                 _logscale = True
 
     _fig.suptitle(kwargs.get('title', obs))
-    axes = _fig.get_axes()
+    axes = _fig.get_axes() if _axes is None else _axes
     if axes:
         ax1 = axes[0]
     else:
@@ -209,6 +210,7 @@ def plot(*runs, **kwargs):
         headerinfo.append('Process: '+_info.get("process")) if "process" in _info else ...
         headerinfo.append('Central setup: '+_info.get("variation",'')[0]) \
                           if len(_info.get('variation',[])) else ...
+        headerinfo.append(_info.get("generation_params")) if "generation_params" in _info else ...
         if (headerinfo):
             ax1.text(.02,.98, (5*' ').join(headerinfo),
                       bbox = dict(facecolor='white',alpha=.6,linewidth=.5),
@@ -460,7 +462,9 @@ def _plot_theory(ax,run,**kwargs):
                         linestyle=_showScaleBand,
                         linewidth=.7*_linewidth,
                         color=_color,
-                        alpha=_alpha)
+                        alpha=_alpha,
+                        **_finetune.get('step',{})
+                        )
 
     if (_showErrors):
         errXs = (.5 + _errshift)*_edges[1:] +\
